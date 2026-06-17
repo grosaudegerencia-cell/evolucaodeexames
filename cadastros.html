@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cadastrar Exames — Sistema GRO Saúde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="db.js"></script>
+<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="sistema.css"/>
+</head>
+<body class="sys-body">
+
+<div id="gro-header" data-page="cadastros"></div>
+
+<main class="sys-main">
+  <div class="cad-grid">
+
+    <!-- Cadastro de Procedimentos/Exames -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span>Exames / Procedimentos</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addProc(event)" class="cad-form">
+          <div class="mfield grow"><label>Nome do exame *</label><input type="text" id="pNome" placeholder="Ex: Audiometria Tonal" required/></div>
+          <div class="mfield"><label>Categoria</label>
+            <select id="pCat">
+              <option>Clínico</option><option>Laboratorial</option>
+              <option>Imagem/Funcional</option><option>Toxicológico</option><option>Outros</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="procCount"></div>
+        <div class="cad-list" id="procList"></div>
+      </div>
+    </div>
+
+    <!-- Cadastro de Tipos de Exame (ASO) -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h.01M7 3h5a1.99 1.99 0 011.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z"/></svg>
+        <span>Tipos de Exame (ASO)</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addTipo(event)" class="cad-form">
+          <div class="mfield grow"><label>Tipo de exame *</label><input type="text" id="tNome" placeholder="Ex: ASO Admissional" required/></div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="tipoCount"></div>
+        <div class="cad-list" id="tipoList"></div>
+      </div>
+    </div>
+
+  </div>
+  <p class="cad-note">Os exames e tipos cadastrados aqui aparecem automaticamente ao agendar uma vaga na <a href="agenda.html">Agenda</a>.</p>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="nav.js"></script>
+<script>
+const CAT_COR = {'Clínico':'#16A94A','Laboratorial':'#f39c12','Imagem/Funcional':'#2980b9','Toxicológico':'#9b59b6','Outros':'#7f8c8d'};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!GRO_AUTH.requireLogin()) return;
+  renderProcs(); renderTipos();
+});
+
+function addProc(e) {
+  e.preventDefault();
+  const r = GRO_DB.addProcedimento(document.getElementById('pNome').value, document.getElementById('pCat').value);
+  if (r.ok) { document.getElementById('pNome').value=''; renderProcs(); toast('Exame cadastrado!', 'success'); }
+  else toast(r.msg, 'error');
+}
+function delProc(nome) {
+  if (!confirm(`Remover o exame "${nome}"?`)) return;
+  GRO_DB.removeProcedimento(nome); renderProcs(); toast('Exame removido.', 'success');
+}
+function renderProcs() {
+  const list = GRO_DB.getProcedimentos();
+  document.getElementById('procCount').textContent = `${list.length} exame(s) cadastrado(s)`;
+  document.getElementById('procList').innerHTML = list.map(p=>{
+    const c = CAT_COR[p.categoria]||'#7f8c8d';
+    return `<div class="cad-item">
+      <span class="cad-item-name">${p.nome}</span>
+      <span class="cad-cat" style="background:${c}1a;color:${c}">${p.categoria}</span>
+      <button class="btn-del-sm" onclick="delProc('${p.nome.replace(/'/g,"\\'")}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+function addTipo(e) {
+  e.preventDefault();
+  const r = GRO_DB.addTipo(document.getElementById('tNome').value);
+  if (r.ok) { document.getElementById('tNome').value=''; renderTipos(); toast('Tipo cadastrado!', 'success'); }
+  else toast(r.msg, 'error');
+}
+function delTipo(nome) {
+  if (!confirm(`Remover o tipo "${nome}"?`)) return;
+  GRO_DB.removeTipo(nome); renderTipos(); toast('Tipo removido.', 'success');
+}
+function renderTipos() {
+  const list = GRO_DB.getTipos();
+  document.getElementById('tipoCount').textContent = `${list.length} tipo(s) cadastrado(s)`;
+  document.getElementById('tipoList').innerHTML = list.map(t=>`
+    <div class="cad-item">
+      <span class="cad-item-name">${t}</span>
+      <button class="btn-del-sm" onclick="delTipo('${t.replace(/'/g,"\\'")}')">×</button>
+    </div>`).join('');
+}
+
+function toast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${tipo} show`;
+  setTimeout(()=>t.className=`toast ${tipo}`, 3000);
+}
+</script>
+</body>
+</html>

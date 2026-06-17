@@ -43,21 +43,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const user = GRO_AUTH.requireLogin();
   if (!user) return;
 
-  document.getElementById("userName").textContent = user.name;
-
-  // Mostra link "Gerenciar Usuários" apenas para admin
-  if (user.role === "admin") {
-    const nav = document.querySelector(".header-actions");
-    if (nav && !document.getElementById("linkUsuarios")) {
-      const a = document.createElement("a");
-      a.id = "linkUsuarios";
-      a.href = "usuarios.html";
-      a.className = "btn-agenda";
-      a.style.cssText = "background:rgba(255,255,255,.1)";
-      a.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg> Usuários';
-      nav.insertBefore(a, nav.firstChild);
-    }
-  }
+  const elUser = document.getElementById("userName");
+  if (elUser) elUser.textContent = user.name;
 
   setDate();
   mesclarAgendamentosLocais();

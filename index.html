@@ -10,39 +10,27 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="db.js"></script>
 <script src="data.js"></script>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="sistema.css" />
 </head>
 <body>
 
-<!-- HEADER -->
-<header class="header">
-  <div class="header-inner">
-    <div class="logo-block">
-      <!-- Logo oficial GRO Saúde -->
-      <img src="logo.svg" alt="GRO Saúde" class="logo-img" />
-      <div class="logo-text">
-        <span class="logo-main">GRO Saúde</span>
-        <span class="logo-sub">Gestão de Segurança e Medicina Ocupacional</span>
-      </div>
-    </div>
-    <div class="header-title">
+<!-- NAVEGAÇÃO DO SISTEMA -->
+<div id="gro-header" data-page="dashboard"></div>
+
+<!-- BARRA DE TÍTULO -->
+<header class="dash-titlebar">
+  <div class="dash-titlebar-inner">
+    <div class="dash-title-text">
       <h1>Dashboard de Evolução de Exames</h1>
       <p id="headerSubtitle">Carregando dados...</p>
     </div>
-    <div class="header-actions">
-      <a href="agendamento.html" class="btn-agenda">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        Novo Agendamento
-      </a>
-      <div class="user-pill" id="userPill">
-        <span id="userName">—</span>
-        <button onclick="GRO_AUTH.logout()" class="btn-logout" title="Sair">⏻</button>
-      </div>
-      <div class="last-update">
-        <span class="update-label">Atualizado em</span>
-        <span id="dataAtual" class="update-date"></span>
-      </div>
+    <div class="dash-title-actions">
+      <a href="#" onclick="window.open(GRO_CONFIG.getSheetEditUrl(),'_blank');return false;" class="btn-reset" style="border-color:#1abc9c;color:#16a085;text-decoration:none;display:inline-flex;align-items:center" title="Abrir planilha de agenda">📊 Planilha</a>
+      <button class="btn-reset" id="btnSyncSheets" onclick="sincronizarSheets()" style="border-color:#2980b9;color:#2980b9" title="Ler dados da planilha">⟳ Sincronizar</button>
+      <span class="last-update"><span class="update-label">Atualizado</span><span id="dataAtual" class="update-date"></span></span>
     </div>
   </div>
 </header>
@@ -87,9 +75,7 @@
         <option value="Agendado">Agendado</option>
       </select>
     </div>
-    <button class="btn-reset" onclick="resetFiltros()">Limpar Filtros</button>
-    <a href="#" onclick="window.open(GRO_CONFIG.getSheetEditUrl(),'_blank');return false;" class="btn-reset" style="margin-left:auto;border-color:#1abc9c;color:#16a085;text-decoration:none;display:inline-flex;align-items:center" title="Abrir planilha no Google Sheets">📊 Abrir Planilha</a>
-    <button class="btn-reset" id="btnSyncSheets" onclick="sincronizarSheets()" style="border-color:#2980b9;color:#2980b9" title="Ler dados da planilha">⟳ Sincronizar Planilha</button>
+    <button class="btn-reset" onclick="resetFiltros()" style="margin-left:auto">Limpar Filtros</button>
   </div>
 </section>
 
@@ -396,6 +382,7 @@
   </div>
 </footer>
 
+<script src="nav.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

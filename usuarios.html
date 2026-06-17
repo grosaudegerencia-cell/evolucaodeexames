@@ -8,9 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="db.js"></script>
 <link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="sistema.css"/>
 <style>
-.page-body{max-width:920px;margin:0 auto;padding:1.5rem}
+.page-body{max-width:920px;margin:1.25rem auto;padding:0 1.5rem}
 .form-card{background:white;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1px solid #d4e6da;overflow:hidden;margin-bottom:1.5rem}
 .form-header{background:linear-gradient(135deg,#1a6e3c,#2EB45D);color:white;padding:1.1rem 1.5rem;display:flex;align-items:center;gap:.75rem}
 .form-header svg{width:22px;height:22px}
@@ -40,26 +42,12 @@
 .info-box{background:#eafaf1;border-left:4px solid #2EB45D;border-radius:8px;padding:1rem 1.25rem;font-size:.82rem;color:#2d5a3d;line-height:1.6;margin-bottom:1.25rem}
 </style>
 </head>
-<body>
+<body class="sys-body">
 
-<header class="header">
-  <div class="header-inner">
-    <div class="logo-block">
-      <img src="logo.svg" alt="GRO Saúde" style="height:42px;width:auto"/>
-      <div class="logo-text">
-        <span class="logo-main">GRO Saúde</span>
-        <span class="logo-sub">Gestão de Segurança e Medicina Ocupacional</span>
-      </div>
-    </div>
-    <div class="header-title"><h1>Gerenciar Usuários</h1><p id="userGreet">—</p></div>
-    <div class="header-actions" style="display:flex;gap:.75rem;align-items:center">
-      <a href="index.html" style="color:white;text-decoration:none;font-size:.82rem;opacity:.85;font-weight:500">← Dashboard</a>
-      <button onclick="GRO_AUTH.logout()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:white;padding:.35rem .85rem;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:inherit">Sair</button>
-    </div>
-  </div>
-</header>
+<div id="gro-header" data-page="usuarios"></div>
 
 <div class="page-body">
+  <h1 style="font-size:1.3rem;font-weight:800;color:#1B392A;margin-bottom:1rem">Gerenciar Usuários <span id="userGreet" style="font-size:.8rem;font-weight:500;color:#7f9e8a"></span></h1>
   <div class="info-box">
     <strong>Área do Administrador.</strong> Aqui você cria e remove usuários do sistema. Os usuários criados aqui ficam salvos neste navegador.
     Para usuários permanentes em qualquer dispositivo, adicione-os também no arquivo <code>config.js</code>.
@@ -107,11 +95,12 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="nav.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const u = GRO_AUTH.requireAdmin();
   if (!u) return;
-  document.getElementById('userGreet').textContent = `Administrador: ${u.name}`;
+  document.getElementById('userGreet').textContent = `— ${u.name}`;
   renderUsers();
 });
 

@@ -5,34 +5,32 @@
 const GRO_CONFIG = {
 
   // ============================================================
-  //  GOOGLE SHEETS — Planilha de Exames e Agendamentos
+  //  GOOGLE SHEETS — Planilha PRÓPRIA do Sistema
   // ============================================================
-  //  Planilha criada automaticamente no Drive da GRO Saúde:
-  //  "GRO Saúde — Base de Exames e Agendamentos"
+  //  Planilha dedicada do sistema (criada no Drive da GRO Saúde):
+  //  "Sistema GRO Saúde — Agendamentos"
+  //  https://docs.google.com/spreadsheets/d/14O4xjAW5NtxaP8boO2Ng0ubBIdG-A6YuCoKO3dvbiLM/edit
   //
-  //  PARA O SITE LER A PLANILHA (somente leitura, mais fácil):
-  //  1. Abra a planilha no Google Sheets
-  //  2. Clique em "Compartilhar" (botão azul, canto superior direito)
-  //  3. Em "Acesso geral", mude para "Qualquer pessoa com o link"
-  //  4. Permissão: "Leitor" > Concluir
-  //  Pronto! O dashboard lê os dados da aba abaixo automaticamente.
+  //  Esta planilha:
+  //   • recebe TODOS os agendamentos feitos na Agenda do site
+  //   • envia automaticamente o RELATÓRIO DIÁRIO por e-mail (toda tarde)
+  //  O motor disso é o Apps Script (arquivo apps-script.gs).
   // ============================================================
-  // Planilha de AGENDA REAL da clínica (a partir de Junho/2026)
-  SHEET_ID:   '1cEQPpyasMgq9pRzITQH0tTsgxm54205Xq2BfqTGSWho',
-  SHEET_ABA:  'Exames',          // nome da aba (para sincronização em formato simples)
-  SHEET_ABA_AGENDA: 'Agendamentos',
-  // A agenda real é por horário/dia (formato complexo). Os dados reais já foram
-  // importados para data.js. Mantemos USAR_SHEETS=false (usa data.js).
-  // Para reimportar dados atualizados da agenda, peça uma nova importação.
-  USAR_SHEETS: false,
+  SHEET_ID:          '14O4xjAW5NtxaP8boO2Ng0ubBIdG-A6YuCoKO3dvbiLM',
+  SHEET_ABA:         'Agendamentos',
+  SHEET_ABA_AGENDA:  'Agendamentos',
+  USAR_SHEETS:       false,   // dashboard analítico continua usando data.js (histórico)
+
+  // E-mail que recebe o relatório diário (configurado no apps-script.gs)
+  EMAIL_RELATORIO:   'e-protecao@hotmail.com',
 
   // ============================================================
-  //  ESCRITA BIDIRECIONAL (Agendamentos site -> planilha)
+  //  GRAVAÇÃO AUTOMÁTICA (Agenda do site -> planilha do sistema)
   // ============================================================
-  //  Para que os agendamentos feitos no site sejam GRAVADOS na
-  //  planilha, é necessário publicar o Apps Script (arquivo
-  //  apps-script.gs). Veja as instruções nesse arquivo e cole a
-  //  URL do "App da Web" abaixo:
+  //  Depois de publicar o Apps Script como "App da Web" (veja as
+  //  instruções no início do arquivo apps-script.gs), cole aqui a
+  //  URL gerada. A partir daí, cada vaga agendada na Agenda é
+  //  gravada na planilha automaticamente.
   // ============================================================
   SHEETS_URL: '',
 

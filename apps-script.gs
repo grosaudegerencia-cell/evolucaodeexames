@@ -1,274 +1,233 @@
 // ============================================================
-//  GOOGLE APPS SCRIPT — GRO Saúde | Dashboard de Exames
+//  GOOGLE APPS SCRIPT — Sistema GRO Saúde
+//  Backend da planilha: grava agendamentos do site, serve os
+//  dados e ENVIA RELATÓRIO DIÁRIO por e-mail toda tarde.
 //
-//  COMO IMPLANTAR:
-//  1. Abra o Google Sheets da sua agenda
-//  2. Extensões > Apps Script
-//  3. Cole TODO este código substituindo o conteúdo existente
-//  4. Clique em Implantar > Nova Implantação
-//  5. Tipo: "App da Web"
-//  6. Executar como: "Eu (sua conta)"
-//  7. Quem pode acessar: "Qualquer pessoa"
-//  8. Copie a URL gerada e cole em config.js > SHEETS_URL
+//  ░░ COMO INSTALAR (uma única vez) ░░
+//  1. Abra a planilha "Sistema GRO Saúde — Agendamentos"
+//  2. Menu Extensões > Apps Script
+//  3. Apague o conteúdo e cole TODO este arquivo
+//  4. Salve (ícone de disquete)
+//  5. No seletor de função, escolha  instalarSistema  e clique em ▶ Executar
+//     -> Autorize as permissões quando solicitado (planilha + e-mail)
+//     Isso cria as abas e agenda o e-mail diário automaticamente.
+//  6. Clique em  Implantar > Nova implantação > tipo "App da Web"
+//       - Executar como: Eu
+//       - Quem pode acessar: Qualquer pessoa
+//     Copie a URL gerada e cole em config.js  ->  SHEETS_URL
 // ============================================================
 
-const SHEET_NAME_AGENDA  = 'Agendamentos';
-const SHEET_NAME_EXAMES  = 'Exames';
+var EMAIL_RELATORIO = 'e-protecao@hotmail.com';
+var HORA_ENVIO      = 18;          // 18h = fim de tarde
+var ABA_AG          = 'Agendamentos';
+var TZ              = 'America/Sao_Paulo';
 
+// ---------- INSTALAÇÃO (rode 1x) ----------
+function instalarSistema() {
+  getAba();                 // garante a aba e cabeçalho
+  embelezarPlanilha();      // formata bonito
+  instalarGatilhoDiario();  // agenda o e-mail diário
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    'Sistema instalado! Relatório diário às ' + HORA_ENVIO + 'h para ' + EMAIL_RELATORIO,
+    'GRO Saúde', 8);
+}
+
+function instalarGatilhoDiario() {
+  // remove gatilhos antigos do relatório
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if (t.getHandlerFunction() === 'enviarRelatorioDiario') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('enviarRelatorioDiario')
+    .timeBased().everyDays(1).atHour(HORA_ENVIO).inTimezone(TZ).create();
+}
+
+// ---------- WEB APP (site <-> planilha) ----------
 function doGet(e) {
-  const action = e.parameter.action || 'list';
-  let result;
+  var action = (e && e.parameter && e.parameter.action) || 'list';
+  var out;
   try {
-    if      (action === 'list')       result = listarAgendamentos();
-    else if (action === 'listExames') result = listarExames();
-    else if (action === 'stats')      result = getEstatisticas();
-    else result = { error: 'Ação desconhecida' };
-  } catch(err) {
-    result = { error: err.message };
-  }
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+    if (action === 'list')       out = { success:true, data: listar() };
+    else if (action === 'stats') out = getEstatisticas();
+    else if (action === 'enviarAgora') { enviarRelatorioDiario(); out = { success:true, msg:'Relatório enviado' }; }
+    else out = { error:'ação desconhecida' };
+  } catch(err) { out = { error:String(err) }; }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
-  let body, result;
+  var out;
   try {
-    body = JSON.parse(e.postData.contents);
-    const action = body.action;
-    if      (action === 'insert') result = inserirAgendamento(body.data);
-    else if (action === 'update') result = atualizarStatus(body.id, body.status);
-    else if (action === 'delete') result = excluirAgendamento(body.id);
-    else if (action === 'insertExame') result = inserirExame(body.data);
-    else result = { error: 'Ação desconhecida' };
-  } catch(err) {
-    result = { error: err.message };
-  }
-  return ContentService
-    .createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+    var body = JSON.parse(e.postData.contents);
+    var a = body.action;
+    var d = body.data || {};
+    if (a === 'insert')      out = inserir(d);
+    else if (a === 'update') out = atualizar(d);
+    else if (a === 'delete') out = excluir(d.id);
+    else out = { error:'ação desconhecida' };
+  } catch(err) { out = { error:String(err) }; }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// ---- AGENDAMENTOS ----
-
-function getAbaAgenda() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba  = ss.getSheetByName(SHEET_NAME_AGENDA);
+function getAba() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = ss.getSheetByName(ABA_AG);
   if (!aba) {
-    aba = ss.insertSheet(SHEET_NAME_AGENDA);
-    aba.appendRow(['ID','Data','Hora','Paciente','CPF','Empresa','Tipo','Procedimento','Médico','Status','Observações','CriadoEm']);
-    aba.getRange(1,1,1,12).setFontWeight('bold').setBackground('#1a6e3c').setFontColor('white');
+    aba = ss.insertSheet(ABA_AG);
+    aba.appendRow(['ID','Data','Hora','Paciente','CPF','Empresa','Tipo','Procedimentos','Médico','Status','Observações','CriadoEm']);
   }
   return aba;
 }
 
-function listarAgendamentos() {
-  const aba  = getAbaAgenda();
-  const rows = aba.getDataRange().getValues();
-  const [header, ...data] = rows;
-  const keys = header.map(h => String(h).toLowerCase().replace(/[^a-z]/g,''));
-  const result = data.map(row => {
-    const obj = {};
-    keys.forEach((k,i) => obj[k] = String(row[i] || ''));
-    // normaliza campos esperados pelo site
-    return {
-      id:        obj['id']         || '',
-      data:      obj['data']       || '',
-      hora:      obj['hora']       || '',
-      paciente:  obj['paciente']   || '',
-      cpf:       obj['cpf']        || '',
-      empresa:   obj['empresa']    || '',
-      tipo:      obj['tipo']       || '',
-      descricao: obj['procedimento'] || obj['descricao'] || '',
-      medico:    obj['mdico']      || obj['medico'] || '',
-      status:    obj['status']     || 'Agendado',
-      obs:       obj['observaes']  || obj['obs'] || '',
-      criadoEm:  obj['criadoem']   || '',
-    };
-  }).filter(r => r.id);
-  return { success: true, data: result };
-}
-
-function inserirAgendamento(d) {
-  const aba = getAbaAgenda();
-  aba.appendRow([
-    d.id, d.data, d.hora, d.paciente, d.cpf,
-    d.empresa, d.tipo, d.descricao, d.medico,
-    d.status || 'Agendado', d.obs, d.criadoEm
-  ]);
-  return { success: true };
-}
-
-function atualizarStatus(id, novoStatus) {
-  const aba  = getAbaAgenda();
-  const rows = aba.getDataRange().getValues();
-  for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(id)) {
-      aba.getRange(i+1, 10).setValue(novoStatus);
-      return { success: true };
-    }
+function listar() {
+  var aba = getAba();
+  var v = aba.getDataRange().getValues();
+  var res = [];
+  for (var i=1;i<v.length;i++) {
+    if (!v[i][0]) continue;
+    res.push({
+      id:String(v[i][0]), data:fmtData(v[i][1]), hora:String(v[i][2]), paciente:String(v[i][3]),
+      cpf:String(v[i][4]), empresa:String(v[i][5]), tipo:String(v[i][6]),
+      procedimentos:String(v[i][7]).split(';').map(function(s){return s.trim();}).filter(String),
+      medico:String(v[i][8]), status:String(v[i][9]), obs:String(v[i][10])
+    });
   }
-  return { error: 'Registro não encontrado' };
+  return res;
 }
 
-function excluirAgendamento(id) {
-  const aba  = getAbaAgenda();
-  const rows = aba.getDataRange().getValues();
-  for (let i = rows.length - 1; i >= 1; i--) {
-    if (String(rows[i][0]) === String(id)) {
-      aba.deleteRow(i+1);
-      return { success: true };
-    }
+function fmtData(x) {
+  if (x instanceof Date) return Utilities.formatDate(x, TZ, 'yyyy-MM-dd');
+  return String(x);
+}
+
+function inserir(d) {
+  var aba = getAba();
+  aba.appendRow([d.id||('ag_'+Date.now()), d.data, d.hora, d.paciente, d.cpf, d.empresa,
+    d.tipo, (d.procedimentos||[]).join('; '), d.medico, d.status, d.obs, d.criadoEm||new Date().toISOString()]);
+  return { success:true };
+}
+
+function atualizar(d) {
+  var aba = getAba(); var v = aba.getDataRange().getValues();
+  for (var i=1;i<v.length;i++) if (String(v[i][0])===String(d.id)) {
+    aba.getRange(i+1,1,1,12).setValues([[d.id,d.data,d.hora,d.paciente,d.cpf,d.empresa,
+      d.tipo,(d.procedimentos||[]).join('; '),d.medico,d.status,d.obs,v[i][11]||'']]);
+    return { success:true };
   }
-  return { error: 'Registro não encontrado' };
+  return inserir(d);
 }
 
-// ---- EXAMES (aba histórica) ----
-
-function getAbaExames() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba  = ss.getSheetByName(SHEET_NAME_EXAMES);
-  if (!aba) {
-    aba = ss.insertSheet(SHEET_NAME_EXAMES);
-    aba.appendRow(['Data','Tipo','Procedimento','Empresa','Paciente','Status']);
-    aba.getRange(1,1,1,6).setFontWeight('bold').setBackground('#1a6e3c').setFontColor('white');
-  }
-  return aba;
+function excluir(id) {
+  var aba = getAba(); var v = aba.getDataRange().getValues();
+  for (var i=v.length-1;i>=1;i--) if (String(v[i][0])===String(id)) { aba.deleteRow(i+1); return {success:true}; }
+  return { error:'não encontrado' };
 }
 
-function listarExames() {
-  const aba  = getAbaExames();
-  const rows = aba.getDataRange().getValues();
-  const [header, ...data] = rows;
-  const result = data.map(row => ({
-    data:      row[0] ? Utilities.formatDate(new Date(row[0]), 'America/Sao_Paulo', 'yyyy-MM-dd') : '',
-    tipo:      row[1] || '',
-    descricao: row[2] || '',
-    empresa:   row[3] || '',
-    paciente:  row[4] || '',
-    status:    row[5] || 'Realizado',
-  })).filter(r => r.data);
-  return { success: true, data: result };
-}
+// ---------- RELATÓRIO DIÁRIO POR E-MAIL ----------
+function enviarRelatorioDiario() {
+  var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  var todos = listar();
+  var doDia = todos.filter(function(r){ return r.data === hoje; });
 
-function inserirExame(d) {
-  const aba = getAbaExames();
-  aba.appendRow([d.data, d.tipo, d.descricao, d.empresa, d.paciente, d.status || 'Realizado']);
-  return { success: true };
-}
-
-// ============================================================
-//  FORMATAÇÃO BONITA — rode uma vez pelo menu Executar > embelezarPlanilha
-//  (deixa a planilha com a identidade visual da GRO Saúde)
-// ============================================================
-function embelezarPlanilha() {
-  const VERDE      = '#1a6e3c';
-  const VERDE_CLARO= '#eafaf1';
-  const VERDE_ESC  = '#1B392A';
-
-  ['Exames', 'Agendamentos'].forEach(nome => {
-    const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(nome);
-    if (!aba) return;
-    const ultCol = aba.getLastColumn() || 6;
-    const ultLin = Math.max(aba.getLastRow(), 1);
-
-    // Cabeçalho
-    const head = aba.getRange(1, 1, 1, ultCol);
-    head.setBackground(VERDE).setFontColor('white').setFontWeight('bold')
-        .setFontSize(11).setHorizontalAlignment('center').setVerticalAlignment('middle');
-    aba.setRowHeight(1, 34);
-    aba.setFrozenRows(1);
-
-    // Corpo: fonte e bordas
-    if (ultLin > 1) {
-      const corpo = aba.getRange(2, 1, ultLin-1, ultCol);
-      corpo.setFontSize(10).setVerticalAlignment('middle');
-      // Linhas zebradas
-      aba.getRange(1, 1, ultLin, ultCol).applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREEN, true, false);
-    }
-
-    // Largura das colunas
-    aba.autoResizeColumns(1, ultCol);
-    for (let c = 1; c <= ultCol; c++) {
-      if (aba.getColumnWidth(c) < 110) aba.setColumnWidth(c, 110);
-    }
-
-    // Formatação condicional do Status (procura a coluna "Status")
-    const headers = aba.getRange(1,1,1,ultCol).getValues()[0];
-    const colStatus = headers.indexOf('Status') + 1;
-    if (colStatus > 0 && ultLin > 1) {
-      const rng = aba.getRange(2, colStatus, ultLin-1, 1);
-      const regras = [
-        criarRegra(rng, 'Realizado',  '#d5f5e3', '#1a6e3c'),
-        criarRegra(rng, 'Agendado',   '#fef9e7', '#b8860b'),
-        criarRegra(rng, 'Confirmado', '#dbeafe', '#1d4ed8'),
-        criarRegra(rng, 'Cancelado',  '#fdeaea', '#c0392b'),
-      ];
-      aba.setConditionalFormatRules(regras);
-    }
+  var porStatus = {}, porTipo = {}, totProc = 0;
+  doDia.forEach(function(r){
+    porStatus[r.status] = (porStatus[r.status]||0)+1;
+    porTipo[r.tipo] = (porTipo[r.tipo]||0)+1;
+    totProc += (r.procedimentos||[]).length;
   });
 
-  // Aba de resumo / capa
-  criarAbaResumo();
-  SpreadsheetApp.getActiveSpreadsheet().toast('Planilha formatada com sucesso!', 'GRO Saúde', 5);
+  var dataBR = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy');
+  var realizados = porStatus['Realizado']||0;
+  var agendados  = (porStatus['Agendado']||0)+(porStatus['Confirmado']||0);
+  var faltas     = porStatus['Faltou']||0;
+
+  var linhas = doDia.sort(function(a,b){return a.hora<b.hora?-1:1;}).map(function(r){
+    return '<tr>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.hora+'</td>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.paciente+'</td>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.empresa+'</td>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.tipo+'</td>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+(r.procedimentos||[]).join(', ')+'</td>'+
+      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.status+'</td></tr>';
+  }).join('');
+
+  var tipoLinhas = Object.keys(porTipo).map(function(k){
+    return '<li>'+k+': <b>'+porTipo[k]+'</b></li>';
+  }).join('');
+
+  var html =
+  '<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#1B392A">'+
+    '<div style="background:linear-gradient(135deg,#1B392A,#16A94A);color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">'+
+      '<h2 style="margin:0">GRO Saúde — Relatório do Dia</h2>'+
+      '<p style="margin:4px 0 0;opacity:.85">'+dataBR+' · Gestão de Segurança e Medicina Ocupacional</p>'+
+    '</div>'+
+    '<div style="border:1px solid #e3efe8;border-top:none;padding:24px;border-radius:0 0 12px 12px">'+
+      '<table style="width:100%;border-collapse:collapse;margin-bottom:18px"><tr>'+
+        card('Atendimentos', doDia.length, '#16A94A')+
+        card('Realizados', realizados, '#2980b9')+
+        card('Agendados', agendados, '#f39c12')+
+        card('Faltas', faltas, '#e74c3c')+
+      '</tr></table>'+
+      '<p style="margin:0 0 6px"><b>Total de exames/procedimentos no dia:</b> '+totProc+'</p>'+
+      '<p style="margin:14px 0 6px"><b>Por tipo de exame:</b></p><ul style="margin:0 0 16px">'+(tipoLinhas||'<li>—</li>')+'</ul>'+
+      '<h3 style="margin:18px 0 8px;color:#1a6e3c">Detalhamento</h3>'+
+      (doDia.length ?
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+        '<tr style="background:#1B392A;color:#fff;text-align:left">'+
+          '<th style="padding:8px 10px">Hora</th><th style="padding:8px 10px">Paciente</th>'+
+          '<th style="padding:8px 10px">Empresa</th><th style="padding:8px 10px">Tipo</th>'+
+          '<th style="padding:8px 10px">Procedimentos</th><th style="padding:8px 10px">Status</th></tr>'+
+        linhas+'</table>'
+      : '<p style="color:#7f9e8a;font-style:italic">Nenhum atendimento registrado para hoje.</p>')+
+      '<p style="margin-top:22px;font-size:12px;color:#9db3a4">E-mail automático do Sistema GRO Saúde · enviado às '+HORA_ENVIO+'h.</p>'+
+    '</div>'+
+  '</div>';
+
+  MailApp.sendEmail({
+    to: EMAIL_RELATORIO,
+    subject: 'GRO Saúde — Relatório do dia '+dataBR+' ('+doDia.length+' atendimentos)',
+    htmlBody: html
+  });
 }
 
-function criarRegra(rng, texto, bg, fg) {
-  return SpreadsheetApp.newConditionalFormatRule()
-    .whenTextEqualTo(texto)
-    .setBackground(bg).setFontColor(fg).setBold(true)
-    .setRanges([rng]).build();
+function card(label, valor, cor) {
+  return '<td style="width:25%;text-align:center;padding:6px">'+
+    '<div style="border:1px solid #e3efe8;border-top:3px solid '+cor+';border-radius:8px;padding:12px 6px">'+
+      '<div style="font-size:26px;font-weight:800;color:'+cor+'">'+valor+'</div>'+
+      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7f9e8a">'+label+'</div>'+
+    '</div></td>';
 }
 
-function criarAbaResumo() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let aba = ss.getSheetByName('📊 Resumo');
-  if (!aba) aba = ss.insertSheet('📊 Resumo', 0);
-  aba.clear();
-  const st = getEstatisticas();
-  aba.getRange('B2').setValue('GRO SAÚDE — RESUMO DE EXAMES')
-     .setFontSize(16).setFontWeight('bold').setFontColor('#1B392A');
-  aba.getRange('B3').setValue('Gestão de Segurança e Medicina Ocupacional')
-     .setFontColor('#2EB45D').setFontWeight('bold');
-  const linhas = [
-    ['Total de Exames', st.totalExames],
-    ['Exames Agendados', st.totalAgendados],
-    ['Exames Hoje', st.examesHoje],
-  ];
-  aba.getRange(5, 2, linhas.length, 2).setValues(linhas);
-  aba.getRange(5, 2, linhas.length, 1).setFontWeight('bold').setFontColor('#1a6e3c');
-  aba.setColumnWidth(2, 220); aba.setColumnWidth(3, 120);
-  aba.setHiddenGridlines(true);
-}
-
-// ---- ESTATÍSTICAS ----
-
+// ---------- ESTATÍSTICAS ----------
 function getEstatisticas() {
-  const exames = listarExames().data;
-  const agenda = listarAgendamentos().data;
-  const anoAtual = new Date().getFullYear();
+  var todos = listar();
+  var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  return { success:true, total:todos.length,
+    hoje: todos.filter(function(r){return r.data===hoje;}).length };
+}
 
-  const porAno  = {};
-  const porMes  = {};
-  const porTipo = {};
-  const porDesc = {};
-
-  exames.forEach(r => {
-    if (!r.data) return;
-    const d   = new Date(r.data);
-    const ano = d.getFullYear();
-    const mes = `${ano}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    porAno[ano]   = (porAno[ano]  ||0)+1;
-    porMes[mes]   = (porMes[mes]  ||0)+1;
-    porTipo[r.tipo]     = (porTipo[r.tipo]    ||0)+1;
-    porDesc[r.descricao]= (porDesc[r.descricao]||0)+1;
-  });
-
-  return {
-    success: true,
-    totalExames:   exames.length,
-    totalAgendados:agenda.filter(r=>r.status==='Agendado').length,
-    porAno, porMes, porTipo, porDesc,
-    examesHoje: exames.filter(r=>r.data===Utilities.formatDate(new Date(),'America/Sao_Paulo','yyyy-MM-dd')).length,
-  };
+// ---------- FORMATAÇÃO ----------
+function embelezarPlanilha() {
+  var aba = getAba();
+  var nc = 12, nl = Math.max(aba.getLastRow(),1);
+  aba.getRange(1,1,1,nc).setBackground('#1a6e3c').setFontColor('white').setFontWeight('bold')
+     .setHorizontalAlignment('center');
+  aba.setFrozenRows(1); aba.setRowHeight(1,32);
+  if (nl>1) aba.getRange(1,1,nl,nc).applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREEN, true, false);
+  for (var c=1;c<=nc;c++){ aba.autoResizeColumn(c); if (aba.getColumnWidth(c)<90) aba.setColumnWidth(c,90); }
+  // cores por status
+  var colStatus = 10;
+  if (nl>1) {
+    var rng = aba.getRange(2,colStatus,nl-1,1);
+    aba.setConditionalFormatRules([
+      regra(rng,'Realizado','#d5f5e3','#1a6e3c'),
+      regra(rng,'Agendado','#fef9e7','#b8860b'),
+      regra(rng,'Confirmado','#dbeafe','#1d4ed8'),
+      regra(rng,'Faltou','#fdeaea','#c0392b'),
+      regra(rng,'Cancelado','#f1f1f1','#666')
+    ]);
+  }
+}
+function regra(rng,txt,bg,fg){
+  return SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(txt)
+    .setBackground(bg).setFontColor(fg).setBold(true).setRanges([rng]).build();
 }

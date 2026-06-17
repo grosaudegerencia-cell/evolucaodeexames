@@ -4,14 +4,21 @@
 
 const GRO_AUTH = {
 
-  SESSION_KEY: 'gro_session',
-  USERS_KEY:   'gro_usuarios_extra',  // usuários criados pelo admin
+  SESSION_KEY:   'gro_session',
+  USERS_KEY:     'gro_usuarios_extra',     // usuários criados pelo admin
+  DISABLED_KEY:  'gro_usuarios_desativados', // usernames de padrão desativados
 
-  // ---- Lista combinada: usuários do config + criados pelo admin ----
+  getDisabled() {
+    try { return JSON.parse(localStorage.getItem(this.DISABLED_KEY)) || []; } catch { return []; }
+  },
+  saveDisabled(list) { localStorage.setItem(this.DISABLED_KEY, JSON.stringify(list)); },
+
+  // ---- Lista combinada: usuários do config + criados pelo admin (sem desativados) ----
   getAllUsers() {
     let extra = [];
     try { extra = JSON.parse(localStorage.getItem(this.USERS_KEY)) || []; } catch {}
-    return [...GRO_CONFIG.USERS, ...extra];
+    const desativados = this.getDisabled();
+    return [...GRO_CONFIG.USERS, ...extra].filter(u => !desativados.includes(u.username));
   },
 
   getExtraUsers() {
@@ -80,9 +87,31 @@ const GRO_AUTH = {
     return { ok:true };
   },
 
+  // Exclui qualquer usuário (criado pelo admin OU padrão do config).
+  // Protege: não pode excluir a si mesmo nem o último admin ativo.
   removerUsuario(username) {
-    const extra = this.getExtraUsers().filter(u => u.username !== username);
-    this.saveExtraUsers(extra);
+    const atual = this.getUser();
+    if (atual && atual.username === username)
+      return { ok:false, msg:'Você não pode excluir o próprio usuário em uso.' };
+
+    const alvo = this.getAllUsers().find(u => u.username === username);
+    if (!alvo) return { ok:false, msg:'Usuário não encontrado.' };
+
+    if (alvo.role === 'admin') {
+      const admins = this.getAllUsers().filter(u => u.role === 'admin');
+      if (admins.length <= 1)
+        return { ok:false, msg:'Não é possível excluir o único administrador do sistema.' };
+    }
+
+    const fixo = GRO_CONFIG.USERS.some(u => u.username === username);
+    if (fixo) {
+      // usuário padrão (config.js): registra como desativado
+      const dis = this.getDisabled();
+      if (!dis.includes(username)) { dis.push(username); this.saveDisabled(dis); }
+    } else {
+      // usuário criado pelo admin: remove do localStorage
+      this.saveExtraUsers(this.getExtraUsers().filter(u => u.username !== username));
+    }
     return { ok:true };
   },
 

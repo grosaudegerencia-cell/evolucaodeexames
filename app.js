@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
   populateFilters();
   applyFilters();
   popularComparacao();
+  renderComparativoProc();
   setupListeners();
 
   // Lê dados reais da planilha Google Sheets (se ativado em config)
@@ -88,6 +89,7 @@ async function lerPlanilhaCSV() {
       populateFilters();
       applyFilters();
       popularComparacao();
+      renderComparativoProc();
       if (btn) btn.textContent = "✓ Planilha conectada";
       mostrarStatusConexao(true, registros.length);
     } else {
@@ -783,6 +785,103 @@ function desenharGraficoComp(rotA, rotB, qa, qb) {
       scales:{ x:{grid:{display:false},ticks:{font:{size:12,weight:'700'}}},
                y:{grid:{color:'#f0f4f1'},beginAtZero:true,ticks:{font:{size:11}}} } }
   });
+}
+
+// ============================================================
+//  COMPARATIVO DE PROCEDIMENTOS (Audiometria, Clínico, Espiro...)
+// ============================================================
+const CORES_PROC = ["#16A94A","#2980b9","#e67e22","#8e44ad","#e74c3c","#1abc9c","#f39c12",
+  "#27ae60","#2c3e50","#d35400","#c0392b","#16a085","#7f8c8d","#9b59b6","#2ecc71"];
+
+function renderComparativoProc() {
+  const periodo = document.getElementById("procPeriodo").value;
+  const topN    = parseInt(document.getElementById("procTopN").value, 10);
+  const status  = document.getElementById("procStatus").value;
+
+  const base = dadosOriginais.filter(r => {
+    if (status !== "todos" && r.status !== status) return false;
+    return true;
+  });
+
+  // Conta por procedimento, separando por ano
+  const map = {}; // desc -> {a2025, a2026, total}
+  base.forEach(r => {
+    const ano = new Date(r.data + "T12:00").getFullYear();
+    if (!map[r.descricao]) map[r.descricao] = { y2025:0, y2026:0, total:0 };
+    if (ano === 2025) map[r.descricao].y2025++;
+    if (ano === 2026) map[r.descricao].y2026++;
+    map[r.descricao].total++;
+  });
+
+  // Ordena por total e aplica período/topN
+  let arr = Object.entries(map).map(([k,v]) => ({ desc:k, ...v }));
+  if (periodo === "2025") arr = arr.filter(x => x.y2025 > 0).sort((a,b)=>b.y2025-a.y2025);
+  else if (periodo === "2026") arr = arr.filter(x => x.y2026 > 0).sort((a,b)=>b.y2026-a.y2026);
+  else arr.sort((a,b)=>b.total-a.total);
+  arr = arr.slice(0, topN);
+
+  const totalGeral = periodo==="2025" ? arr.reduce((s,x)=>s+x.y2025,0)
+                   : periodo==="2026" ? arr.reduce((s,x)=>s+x.y2026,0)
+                   : arr.reduce((s,x)=>s+x.total,0);
+
+  renderProcChart(arr, periodo);
+  renderProcTable(arr, totalGeral, periodo);
+}
+
+function renderProcChart(arr, periodo) {
+  destroyChart("procComp");
+  const labels = arr.map(x => x.desc);
+  const ctx = document.getElementById("chartProcComp").getContext("2d");
+  let datasets;
+  if (periodo === "todos") {
+    datasets = [
+      { label:"2025", data:arr.map(x=>x.y2025), backgroundColor:"#94c9aa", borderColor:"#7fb894", borderWidth:1, borderRadius:4 },
+      { label:"2026", data:arr.map(x=>x.y2026), backgroundColor:"#16A94A", borderColor:"#0f7d36", borderWidth:1, borderRadius:4 },
+    ];
+  } else {
+    const key = periodo==="2025" ? "y2025" : "y2026";
+    datasets = [{ label:periodo, data:arr.map(x=>x[key]),
+      backgroundColor: arr.map((_,i)=>CORES_PROC[i%CORES_PROC.length]+"CC"),
+      borderColor: arr.map((_,i)=>CORES_PROC[i%CORES_PROC.length]), borderWidth:1.5, borderRadius:5 }];
+  }
+  charts["procComp"] = new Chart(ctx, {
+    type:"bar",
+    data:{ labels, datasets },
+    options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display: periodo==="todos", position:"top", labels:{font:{size:11},usePointStyle:true,boxWidth:8} },
+        tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}: ${c.parsed.x} exame(s)` } } },
+      scales:{ x:{ grid:{color:"#f0f4f1"}, beginAtZero:true, ticks:{font:{size:11}} },
+               y:{ grid:{display:false}, ticks:{font:{size:10}} } } }
+  });
+}
+
+function renderProcTable(arr, totalGeral, periodo) {
+  const tb = document.getElementById("procTableBody");
+  tb.innerHTML = "";
+  arr.forEach((x,i) => {
+    const cor = CORES_PROC[i % CORES_PROC.length];
+    const valPeriodo = periodo==="2025" ? x.y2025 : periodo==="2026" ? x.y2026 : x.total;
+    const pct = totalGeral ? (valPeriodo/totalGeral*100).toFixed(1) : "0.0";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="proc-name"><span class="proc-dot" style="background:${cor}"></span>${x.desc}</span></td>
+      <td>${x.y2025.toLocaleString("pt-BR")}</td>
+      <td>${x.y2026.toLocaleString("pt-BR")}</td>
+      <td><strong>${x.total.toLocaleString("pt-BR")}</strong></td>
+      <td><span class="proc-pct">${pct}%</span></td>`;
+    tb.appendChild(tr);
+  });
+  // rodapé com totais
+  const t25 = arr.reduce((s,x)=>s+x.y2025,0);
+  const t26 = arr.reduce((s,x)=>s+x.y2026,0);
+  const tt  = arr.reduce((s,x)=>s+x.total,0);
+  const tf = document.createElement("tr");
+  tf.innerHTML = `<td style="font-weight:700;border-top:2px solid var(--border)">TOTAL (exibido)</td>
+    <td style="font-weight:700;border-top:2px solid var(--border)">${t25}</td>
+    <td style="font-weight:700;border-top:2px solid var(--border)">${t26}</td>
+    <td style="font-weight:700;border-top:2px solid var(--border)">${tt}</td>
+    <td style="font-weight:700;border-top:2px solid var(--border)">100%</td>`;
+  tb.appendChild(tf);
 }
 
 // ---- UTIL ----

@@ -297,6 +297,58 @@
   </div>
 </section>
 
+<!-- COMPARATIVO DE PROCEDIMENTOS -->
+<section class="charts-section">
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <h2 class="chart-title">Comparativo de Procedimentos</h2>
+        <p class="chart-desc">Audiometria, Clínico, Espirometria, Hemograma e demais — quantidades, percentuais e evolução 2025 × 2026</p>
+      </div>
+      <div class="chart-badge badge-green">Por exame</div>
+    </div>
+    <div class="comp-body">
+      <div class="proc-controls">
+        <div class="comp-field">
+          <label>Período</label>
+          <select id="procPeriodo" onchange="renderComparativoProc()">
+            <option value="todos">Todos os anos</option>
+            <option value="2025">Apenas 2025</option>
+            <option value="2026">Apenas 2026</option>
+          </select>
+        </div>
+        <div class="comp-field">
+          <label>Mostrar</label>
+          <select id="procTopN" onchange="renderComparativoProc()">
+            <option value="8">Top 8 procedimentos</option>
+            <option value="12" selected>Top 12 procedimentos</option>
+            <option value="999">Todos</option>
+          </select>
+        </div>
+        <div class="comp-field">
+          <label>Status</label>
+          <select id="procStatus" onchange="renderComparativoProc()">
+            <option value="todos">Todos</option>
+            <option value="Realizado" selected>Somente realizados</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="proc-layout">
+        <div class="proc-chart-box"><canvas id="chartProcComp"></canvas></div>
+        <div class="proc-table-wrap">
+          <table id="procTable">
+            <thead>
+              <tr><th>Procedimento</th><th>2025</th><th>2026</th><th>Total</th><th>% do total</th></tr>
+            </thead>
+            <tbody id="procTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- TABLE -->
 <section class="table-section">
   <div class="table-card">

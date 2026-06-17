@@ -139,18 +139,19 @@ function renderUsers() {
       <td>${u.username}</td>
       <td><span class="role-badge ${rCls}">${rLbl}</span></td>
       <td>${u.fixo ? '<span class="tag-fixo">padrão (config.js)</span>' : 'criado por admin'}</td>
-      <td>${u.fixo
-        ? '<span class="tag-fixo">—</span>'
-        : `<button class="btn-key" onclick="trocarSenha('${u.username}')">Senha</button><button class="btn-del" onclick="remover('${u.username}')">Remover</button>`}</td>`;
+      <td>
+        ${u.fixo ? '' : `<button class="btn-key" onclick="trocarSenha('${u.username}')">Senha</button>`}
+        <button class="btn-del" onclick="remover('${u.username}')">Excluir</button>
+      </td>`;
     tb.appendChild(tr);
   });
 }
 
 function remover(username) {
-  if (!confirm(`Remover o usuário "${username}"?`)) return;
-  GRO_AUTH.removerUsuario(username);
-  toast('Usuário removido.', 'success');
-  renderUsers();
+  if (!confirm(`Excluir o usuário "${username}"? Ele não conseguirá mais acessar o sistema.`)) return;
+  const r = GRO_AUTH.removerUsuario(username);
+  if (r.ok) { toast('Usuário excluído com sucesso.', 'success'); renderUsers(); }
+  else toast(r.msg, 'error');
 }
 
 function trocarSenha(username) {

@@ -205,6 +205,24 @@ body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color
 .comp-detail .cd-title { font-weight: 700; color: var(--text-primary); font-size: .85rem; margin-bottom: .2rem; }
 @media (max-width: 768px) { .comp-chart-row { grid-template-columns: 1fr; } }
 
+/* ===================== COMPARATIVO DE PROCEDIMENTOS ===================== */
+.proc-controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; padding-bottom: 1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }
+.proc-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1.25rem; align-items: start; }
+.proc-chart-box { height: 360px; position: relative; }
+.proc-table-wrap { overflow-x: auto; max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+#procTable { width: 100%; border-collapse: collapse; font-size: .8rem; }
+#procTable thead th { background: var(--gro-green-dark); color: #fff; padding: .55rem .7rem; text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .4px; position: sticky; top: 0; }
+#procTable thead th:not(:first-child) { text-align: right; }
+#procTable tbody tr { border-bottom: 1px solid var(--border); }
+#procTable tbody tr:hover { background: var(--gro-green-ghost); }
+#procTable tbody td { padding: .5rem .7rem; }
+#procTable tbody td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+#procTable .proc-name { font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: .45rem; }
+#procTable .proc-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+#procTable .proc-pct { font-weight: 700; color: var(--gro-green); }
+#procTable tfoot td { padding: .5rem .7rem; font-weight: 700; border-top: 2px solid var(--border); background: var(--bg); }
+@media (max-width: 900px) { .proc-layout { grid-template-columns: 1fr; } }
+
 /* ===================== TABLE SECTION ===================== */
 .table-section { max-width: 1440px; margin: 1.1rem auto 1.5rem; padding: 0 1.5rem; }
 .table-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; }

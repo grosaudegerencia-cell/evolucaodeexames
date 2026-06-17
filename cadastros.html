@@ -68,7 +68,7 @@
 const CAT_COR = {'Clínico':'#16A94A','Laboratorial':'#f39c12','Imagem/Funcional':'#2980b9','Toxicológico':'#9b59b6','Outros':'#7f8c8d'};
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (!GRO_AUTH.requireLogin()) return;
+  if (!GRO_AUTH.requireAdmin()) return;
   renderProcs(); renderTipos();
 });
 

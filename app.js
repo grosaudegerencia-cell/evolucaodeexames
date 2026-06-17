@@ -46,6 +46,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const elUser = document.getElementById("userName");
   if (elUser) elUser.textContent = user.name;
 
+  // Exibe botões exclusivos do administrador
+  if (user.role === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.removeProperty('display'));
+  }
+
   setDate();
   mesclarAgendamentosLocais();
   populateFilters();
@@ -877,4 +882,109 @@ function getISOWeek(date) {
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
   const y = new Date(Date.UTC(d.getUTCFullYear(),0,1));
   return Math.ceil((((d-y)/86400000)+1)/7);
+}
+
+// ============================================================
+//  EXPORTAR CSV — somente admin
+// ============================================================
+function exportarCSV() {
+  const user = GRO_AUTH.getUser();
+  if (!user || user.role !== 'admin') { alert('Acesso restrito ao administrador.'); return; }
+
+  const dados = (filteredData && filteredData.length) ? filteredData : dadosOriginais;
+  const header = ['Data','Tipo','Procedimento','Empresa','Paciente','Status'];
+  const linhas = dados.map(r =>
+    [r.data, r.tipo, r.descricao, r.empresa, r.paciente, r.status]
+      .map(v => '"' + (v||'').replace(/"/g, '""') + '"').join(',')
+  );
+  const csv = '﻿' + [header.join(','), ...linhas].join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const data = new Date().toISOString().slice(0, 10);
+  const ano  = document.getElementById('filterAno')?.value || 'todos';
+  a.href = url;
+  a.download = `GROSaude_Exames_${ano}_${data}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================
+//  ALIMENTAR AGENDA — importa GRO_EXAMES para localStorage (somente admin)
+// ============================================================
+function alimentarAgenda() {
+  const user = GRO_AUTH.getUser();
+  if (!user || user.role !== 'admin') { alert('Acesso restrito ao administrador.'); return; }
+  if (!confirm('Isso importará todos os registros históricos para a Agenda do sistema.\nRegistros já existentes não serão duplicados.\n\nContinuar?')) return;
+
+  // Agrupa por data + empresa + paciente (1 entrada na agenda por atendimento)
+  const groups = {};
+  GRO_EXAMES.forEach(r => {
+    const key = `${r.data}|${r.empresa}|${r.paciente}`;
+    if (!groups[key]) {
+      groups[key] = { data: r.data, empresa: r.empresa, paciente: r.paciente,
+                      tipo: r.tipo, status: r.status, procs: new Set() };
+    }
+    if (r.descricao) groups[key].procs.add(r.descricao);
+  });
+
+  // Organiza por data
+  const porData = {};
+  Object.values(groups).forEach(g => {
+    if (!porData[g.data]) porData[g.data] = [];
+    porData[g.data].push(g);
+  });
+
+  // Deduplicação: chaves que já existem no localStorage
+  const existentes = new Set(
+    GRO_DB.getAgendamentos().map(a => `${a.data}|${a.empresa}|${a.paciente}`)
+  );
+
+  let importados = 0;
+  const cfg  = GRO_DB.getConfigAgenda();
+  const step = cfg.intervalo || 10;
+
+  Object.keys(porData).sort().forEach(data => {
+    const pacientes = porData[data];
+    let [h, m] = cfg.inicio.split(':').map(Number);
+    const almocoIni = cfg.almocoIni || '12:00';
+    const almocoFim = cfg.almocoFim || '13:00';
+
+    pacientes.forEach(p => {
+      const key = `${p.data}|${p.empresa}|${p.paciente}`;
+      if (existentes.has(key)) return;
+
+      // Pula horário de almoço
+      const horaAtual = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      if (horaAtual >= almocoIni && horaAtual < almocoFim) {
+        const [af, mf] = almocoFim.split(':').map(Number);
+        h = af; m = mf;
+      }
+      const hora = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+
+      GRO_DB.addAgendamento({
+        data:         p.data,
+        hora:         hora,
+        paciente:     p.paciente,
+        empresa:      p.empresa,
+        tipo:         p.tipo,
+        procedimentos: [...p.procs],
+        status:       p.status,
+        cpf:          '',
+        medico:       '',
+        obs:          'Importado do histórico',
+      });
+      existentes.add(key);
+      importados++;
+
+      m += step;
+      if (m >= 60) { h += Math.floor(m / 60); m = m % 60; }
+    });
+  });
+
+  alert(importados > 0
+    ? `✅ ${importados} atendimento(s) importado(s) para a Agenda!\nAcesse a página "Agenda" para visualizar.`
+    : 'Nenhum registro novo para importar — a agenda já está atualizada.');
 }

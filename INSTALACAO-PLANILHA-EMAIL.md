@@ -2,7 +2,7 @@
 
 O sistema já tem uma **planilha própria** e o código pronto para:
 - gravar automaticamente os agendamentos da Agenda na planilha;
-- enviar o **relatório do dia por e-mail** para **e-protecao@hotmail.com** toda tarde (18h).
+- enviar o **relatório do dia por e-mail** para **e-protecao@hotmail.com** toda tarde (17h30).
 
 Falta apenas **publicar o motor (Apps Script)** — uma configuração única de ~3 minutos que só você pode fazer (exige autorizar e-mail e planilha na sua conta Google).
 
@@ -24,7 +24,7 @@ No topo, no seletor de função, escolha **`instalarSistema`** e clique em **▶
 - O Google vai pedir autorização → **Revisar permissões** → escolha sua conta → **Avançado → Acessar (não seguro)** → **Permitir**.
 - *(Esse aviso "não seguro" é normal: é o seu próprio script acessando sua planilha e e-mail.)*
 
-Pronto: a partir daqui o **relatório diário às 18h** já está agendado. ✅
+Pronto: a partir daqui o **relatório diário às 17h30** já está agendado. ✅
 
 ### 5. Publique como App da Web (para o site gravar na planilha)
 - **Implantar → Nova implantação**
@@ -42,7 +42,7 @@ Me avise que eu publico essa alteração — ou edite e faça commit você mesmo
 
 ---
 
-## Como testar agora (sem esperar as 18h)
+## Como testar agora (sem esperar as 17h30)
 No editor do Apps Script, escolha a função **`enviarRelatorioDiario`** e clique em **▶ Executar**.
 O e-mail do dia chega na hora em **e-protecao@hotmail.com**.
 
@@ -50,6 +50,7 @@ O e-mail do dia chega na hora em **e-protecao@hotmail.com**.
 No topo do `apps-script.gs`:
 ```js
 var EMAIL_RELATORIO = 'e-protecao@hotmail.com';
-var HORA_ENVIO      = 18;   // troque para 17, 19, etc.
+var HORA_ENVIO      = 17;
+  var MINUTO_ENVIO    = 30;   // troque o horário aqui
 ```
 Depois rode **`instalarSistema`** de novo para aplicar.

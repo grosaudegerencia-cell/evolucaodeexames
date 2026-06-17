@@ -18,7 +18,8 @@
 // ============================================================
 
 var EMAIL_RELATORIO = 'e-protecao@hotmail.com';
-var HORA_ENVIO      = 18;          // 18h = fim de tarde
+var HORA_ENVIO      = 17;          // 17h30 = fim de tarde
+var MINUTO_ENVIO    = 30;
 var ABA_AG          = 'Agendamentos';
 var TZ              = 'America/Sao_Paulo';
 
@@ -28,7 +29,7 @@ function instalarSistema() {
   embelezarPlanilha();      // formata bonito
   instalarGatilhoDiario();  // agenda o e-mail diário
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Sistema instalado! Relatório diário às ' + HORA_ENVIO + 'h para ' + EMAIL_RELATORIO,
+    'Sistema instalado! Relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO + ' para ' + EMAIL_RELATORIO,
     'GRO Saúde', 8);
 }
 
@@ -38,7 +39,7 @@ function instalarGatilhoDiario() {
     if (t.getHandlerFunction() === 'enviarRelatorioDiario') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('enviarRelatorioDiario')
-    .timeBased().everyDays(1).atHour(HORA_ENVIO).inTimezone(TZ).create();
+    .timeBased().everyDays(1).atHour(HORA_ENVIO).nearMinute(MINUTO_ENVIO).inTimezone(TZ).create();
 }
 
 // ---------- WEB APP (site <-> planilha) ----------
@@ -178,7 +179,7 @@ function enviarRelatorioDiario() {
           '<th style="padding:8px 10px">Procedimentos</th><th style="padding:8px 10px">Status</th></tr>'+
         linhas+'</table>'
       : '<p style="color:#7f9e8a;font-style:italic">Nenhum atendimento registrado para hoje.</p>')+
-      '<p style="margin-top:22px;font-size:12px;color:#9db3a4">E-mail automático do Sistema GRO Saúde · enviado às '+HORA_ENVIO+'h.</p>'+
+      '<p style="margin-top:22px;font-size:12px;color:#9db3a4">E-mail automático do Sistema GRO Saúde · enviado às '+HORA_ENVIO+'h'+MINUTO_ENVIO+'.</p>'+
     '</div>'+
   '</div>';
 

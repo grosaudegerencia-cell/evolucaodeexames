@@ -17,10 +17,14 @@ const GRO_CONFIG = {
   //  4. Permissão: "Leitor" > Concluir
   //  Pronto! O dashboard lê os dados da aba abaixo automaticamente.
   // ============================================================
-  SHEET_ID:   '1mK15eeIsEmLEhoRB4ZqbcUhEK66OipKGFZqFOCVGRZk',
-  SHEET_ABA:  'Exames',          // nome da aba com os dados históricos
+  // Planilha de AGENDA REAL da clínica (a partir de Junho/2026)
+  SHEET_ID:   '1cEQPpyasMgq9pRzITQH0tTsgxm54205Xq2BfqTGSWho',
+  SHEET_ABA:  'Exames',          // nome da aba (para sincronização em formato simples)
   SHEET_ABA_AGENDA: 'Agendamentos',
-  USAR_SHEETS: true,             // true = lê da planilha; false = usa data.js
+  // A agenda real é por horário/dia (formato complexo). Os dados reais já foram
+  // importados para data.js. Mantemos USAR_SHEETS=false (usa data.js).
+  // Para reimportar dados atualizados da agenda, peça uma nova importação.
+  USAR_SHEETS: false,
 
   // ============================================================
   //  ESCRITA BIDIRECIONAL (Agendamentos site -> planilha)

@@ -8,13 +8,23 @@ const MESES_PT   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out",
 const MESES_FULL = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 const TIPO_BG = {
-  "ASO Admissional":    "#1B392A",
-  "ASO Periódico":      "#3AB86A",
-  "ASO Demissional":    "#e74c3c",
-  "ASO Retorno":        "#e67e22",
+  "ASO Admissional":       "#16A94A",
+  "ASO Periódico":         "#2980b9",
+  "ASO Demissional":       "#e74c3c",
+  "ASO Retorno":           "#e67e22",
   "ASO Mudança de Função": "#9b59b6",
-  "Consulta Médica":    "#2980b9",
-  "Coleta Laboratorial":"#1abc9c",
+  "ASO Mudança de Riscos": "#9b59b6",
+  "Consulta Médica":       "#1abc9c",
+  "Coleta Laboratorial":   "#f39c12",
+};
+
+// Status com cores (inclui faltas e reagendamentos da agenda real)
+const STATUS_BG = {
+  "Realizado":  "#16A94A",
+  "Agendado":   "#f39c12",
+  "Faltou":     "#e74c3c",
+  "Reagendado": "#9b59b6",
+  "Cancelado":  "#7f8c8d",
 };
 
 // ---- STATE ----
@@ -193,16 +203,35 @@ function mesclarAgendamentosLocais() {
 function populateFilters() {
   const tipos    = [...new Set(dadosOriginais.map(r => r.tipo))].sort();
   const empresas = [...new Set(dadosOriginais.map(r => r.empresa))].sort();
+  const status   = [...new Set(dadosOriginais.map(r => r.status))].sort();
+  const anos     = [...new Set(dadosOriginais.map(r => new Date(r.data+"T12:00").getFullYear()))].sort();
+  const meses    = [...new Set(dadosOriginais.map(r => new Date(r.data+"T12:00").getMonth()+1))].sort((a,b)=>a-b);
+
   const selTipo  = document.getElementById("filterTipo");
   const selEmp   = document.getElementById("filterEmpresa");
-  const prevTipo = selTipo.value;
-  const prevEmp  = selEmp.value;
+  const selStat  = document.getElementById("filterStatus");
+  const selAno   = document.getElementById("filterAno");
+  const selMes   = document.getElementById("filterMes");
+  const prev = { t:selTipo.value, e:selEmp.value, s:selStat.value, a:selAno.value, m:selMes.value };
+
   selTipo.innerHTML = '<option value="todos">Todos</option>';
   selEmp.innerHTML  = '<option value="todas">Todas</option>';
-  tipos.forEach(t => { const o = document.createElement("option"); o.value = t; o.textContent = t; selTipo.appendChild(o); });
-  empresas.forEach(e => { const o = document.createElement("option"); o.value = e; o.textContent = e; selEmp.appendChild(o); });
-  if (prevTipo) selTipo.value = prevTipo;
-  if (prevEmp)  selEmp.value  = prevEmp;
+  selStat.innerHTML = '<option value="todos">Todos</option>';
+  selAno.innerHTML  = '<option value="todos">Todos</option>';
+  selMes.innerHTML  = '<option value="todos">Todos</option>';
+
+  tipos.forEach(t => selTipo.add(new Option(t, t)));
+  empresas.forEach(e => selEmp.add(new Option(e, e)));
+  status.forEach(s => selStat.add(new Option(s, s)));
+  anos.forEach(a => selAno.add(new Option(a, a)));
+  meses.forEach(m => selMes.add(new Option(MESES_FULL[m-1], m)));
+
+  // Restaura seleção anterior, ou usa o período com dados mais recente
+  selTipo.value = prev.t && [...selTipo.options].some(o=>o.value===prev.t) ? prev.t : "todos";
+  selEmp.value  = prev.e && [...selEmp.options].some(o=>o.value===prev.e)  ? prev.e : "todas";
+  selStat.value = prev.s && [...selStat.options].some(o=>o.value===prev.s) ? prev.s : "todos";
+  selAno.value  = prev.a && [...selAno.options].some(o=>o.value===prev.a)  ? prev.a : (anos.length ? String(anos[anos.length-1]) : "todos");
+  selMes.value  = prev.m && [...selMes.options].some(o=>o.value===prev.m)  ? prev.m : "todos";
 }
 
 function setupListeners() {
@@ -306,10 +335,11 @@ function renderAllCharts() {
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
-/* Anual — compara 2024, 2025, 2026 */
+/* Anual — compara os anos presentes nos dados */
 function renderChartAnual() {
   destroyChart("anual");
-  const anos   = [2024, 2025, 2026];
+  let anos = [...new Set(dadosOriginais.map(r => new Date(r.data+"T12:00:00").getFullYear()))].sort();
+  if (anos.length === 0) anos = [new Date().getFullYear()];
   const totais = anos.map(a => dadosOriginais.filter(r => new Date(r.data+"T12:00:00").getFullYear() === a).length);
   const ctx    = document.getElementById("chartAnual").getContext("2d");
 
@@ -357,11 +387,14 @@ function renderChartAnual() {
   });
 }
 
-/* Mensal comparativo — 2024 vs 2025 vs 2026 sobrepostos */
+/* Mensal comparativo — anos presentes sobrepostos */
 function renderChartMensal() {
   destroyChart("mensal");
-  const anos = [2024, 2025, 2026];
-  const coresAno = ["#7f9e8a", "#3AB86A", "#1B392A"];
+  let anos = [...new Set(dadosOriginais.map(r => new Date(r.data+"T12:00:00").getFullYear()))].sort();
+  if (anos.length === 0) anos = [new Date().getFullYear()];
+  const badge = document.getElementById("badgeMensal");
+  if (badge) badge.textContent = anos.join(" · ");
+  const coresAno = ["#7f9e8a", "#2980b9", "#16A94A", "#1B392A", "#e67e22"];
 
   const datasets = anos.map((ano, idx) => {
     const byMes = MESES_PT.map((_, m) =>
@@ -600,8 +633,8 @@ function renderTable() {
   } else {
     slice.forEach(r => {
       const cor     = TIPO_BG[r.tipo] || "#999";
+      const sCor    = STATUS_BG[r.status] || "#7f8c8d";
       const dataFmt = new Date((r.data||"2000-01-01")+"T12:00:00").toLocaleDateString("pt-BR");
-      const isSched = r.status === "Agendado";
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td><strong>${dataFmt}</strong></td>
@@ -609,8 +642,8 @@ function renderTable() {
         <td>${r.descricao}</td>
         <td style="font-size:.78rem">${r.empresa}</td>
         <td style="font-size:.78rem;color:var(--text-secondary)">${r.paciente}</td>
-        <td><span class="status-badge status-${(r.status||"").toLowerCase()}">
-          <span class="status-dot"></span>${r.status||"—"}
+        <td><span class="status-badge" style="background:${sCor}1a;color:${sCor}">
+          <span class="status-dot" style="background:${sCor}"></span>${r.status||"—"}
         </span></td>`;
       tbody.appendChild(tr);
     });
@@ -635,6 +668,7 @@ function nextPage() { if (currentPage < Math.ceil(tableData.length/PAGE_SIZE)) {
 function getDimValues(dim) {
   const arr = dadosOriginais;
   if (dim === 'ano')   return [...new Set(arr.map(r=>new Date(r.data+'T12:00').getFullYear()))].sort().map(String);
+  if (dim === 'dia')   return [...new Set(arr.map(r=>r.data))].sort();
   if (dim === 'tipo')  return [...new Set(arr.map(r=>r.tipo))].sort();
   if (dim === 'empresa') return [...new Set(arr.map(r=>r.empresa))].sort();
   if (dim === 'procedimento') return [...new Set(arr.map(r=>r.descricao))].sort();
@@ -646,7 +680,7 @@ function popularComparacao() {
   const anoBox = document.getElementById('compAnoBox');
   const selA   = document.getElementById('compA');
   const selB   = document.getElementById('compB');
-  const labels = { ano:'Ano', mes:'Mês', tipo:'Tipo de Exame', empresa:'Empresa', procedimento:'Procedimento' };
+  const labels = { ano:'Ano', mes:'Mês', dia:'Dia', tipo:'Tipo de Exame', empresa:'Empresa', procedimento:'Procedimento' };
   document.getElementById('lblA').textContent = labels[dim] + ' A';
   document.getElementById('lblB').textContent = labels[dim] + ' B';
 
@@ -659,8 +693,9 @@ function popularComparacao() {
   }
 
   let opts;
-  if (dim === 'mes') opts = MESES_FULL.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
-  else               opts = getDimValues(dim).map(v=>`<option value="${v}">${v}</option>`).join('');
+  if (dim === 'mes')      opts = MESES_FULL.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+  else if (dim === 'dia') opts = getDimValues(dim).map(v=>`<option value="${v}">${new Date(v+'T12:00').toLocaleDateString('pt-BR')}</option>`).join('');
+  else                    opts = getDimValues(dim).map(v=>`<option value="${v}">${v}</option>`).join('');
   selA.innerHTML = opts; selB.innerHTML = opts;
 
   const n = selA.options.length;
@@ -673,6 +708,7 @@ function contarPara(dim, valor, ano, status) {
     if (status !== 'todos' && r.status !== status) return false;
     const d = new Date(r.data+'T12:00');
     if (dim === 'ano')   return d.getFullYear().toString() === valor;
+    if (dim === 'dia')   return r.data === valor;
     if (dim === 'mes')   return (d.getMonth()+1).toString() === valor && d.getFullYear().toString() === ano;
     if (dim === 'tipo')  return r.tipo === valor;
     if (dim === 'empresa') return r.empresa === valor;
@@ -681,7 +717,11 @@ function contarPara(dim, valor, ano, status) {
   }).length;
 }
 
-function rotuloValor(dim, valor) { return dim === 'mes' ? MESES_FULL[+valor-1] : valor; }
+function rotuloValor(dim, valor) {
+  if (dim === 'mes') return MESES_FULL[+valor-1];
+  if (dim === 'dia') return new Date(valor+'T12:00').toLocaleDateString('pt-BR');
+  return valor;
+}
 
 function calcularComparacao() {
   const dim    = document.getElementById('compDim').value;

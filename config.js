@@ -32,7 +32,7 @@ const GRO_CONFIG = {
   //  URL gerada. A partir daí, cada vaga agendada na Agenda é
   //  gravada na planilha automaticamente.
   // ============================================================
-  SHEETS_URL: '',
+  SHEETS_URL: 'https://script.google.com/macros/s/AKfycbwLZ6_Fv7OS8LVdj_yOszJhrlXGXltCo04AxVeA4etLixuFVf07EL2wVWYtn4BGgdkz/exec',
 
   // ============================================================
   //  USUÁRIOS DO SISTEMA

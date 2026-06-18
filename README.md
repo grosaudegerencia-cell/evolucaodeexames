@@ -1,4 +1,4 @@
-# Dashboard de Evolução de Exames — GRO Saúde
+# Dashboard de Agenda de Exames — GRO Saúde
 
 Dashboard interativo para visualização da evolução de exames da **Clínica GRO Saúde — Gestão de Riscos Ocupacionais**.
 

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/evolucaodeexames && git status --short | grep -q '.' && { GIT_TERMINAL_PROMPT=0 git -c 'http.https://github.com.extraheader=' add -A && GIT_TERMINAL_PROMPT=0 git -c 'http.https://github.com.extraheader=' commit -m 'chore: auto-commit on session end' 2>&1; }; GIT_TERMINAL_PROMPT=0 git -c 'http.https://github.com.extraheader=' push https://grosaudegerencia-cell:${GITHUB_TOKEN}@github.com/grosaudegerencia-cell/gestaodeexames.git main 2>&1 | tail -3 || true",
+            "timeout": 30,
+            "statusMessage": "Enviando alterações para o GitHub…"
+          }
+        ]
+      }
+    ]
+  }
+}

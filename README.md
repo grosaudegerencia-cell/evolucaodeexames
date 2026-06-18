@@ -4,7 +4,7 @@
 
 Dashboard interativo para visualização da evolução de exames da **Clínica GRO Saúde — Gestão de Segurança e Medicina Ocupacional**.
 
-🔗 **Acesse o dashboard:** https://grosaudegerencia-cell.github.io/evolucaodeexames/
+🔗 **Acesse o dashboard:** https://grosaudegerencia-cell.github.io/gestaodeexames/
 
 ## Funcionalidades
 

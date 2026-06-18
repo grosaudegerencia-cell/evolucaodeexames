@@ -37,6 +37,17 @@ const GRO_CONFIG = {
   SHEETS_URL: 'https://script.google.com/macros/s/AKfycbwLZ6_Fv7OS8LVdj_yOszJhrlXGXltCo04AxVeA4etLixuFVf07EL2wVWYtn4BGgdkz/exec',
 
   // ============================================================
+  //  SINCRONIZAÇÃO AUTOMÁTICA (multi-dispositivo via Google Sheets)
+  // ============================================================
+  //  Com true, o sistema baixa/salva usuários, agendamentos, exames,
+  //  tipos, empresas e configurações na planilha — iguais em todos os
+  //  aparelhos. Requer o apps-script.gs reimplantado (App da Web) com a
+  //  SHEETS_URL acima. Se a planilha estiver indisponível, o sistema
+  //  continua funcionando com o cache local.
+  // ============================================================
+  SYNC_ENABLED: true,
+
+  // ============================================================
   //  USUÁRIOS DO SISTEMA
   // ============================================================
   //  Estes são os usuários padrão (sempre disponíveis).

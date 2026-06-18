@@ -23,14 +23,38 @@ var MINUTO_ENVIO    = 30;
 var ABA_AG          = 'Agendamentos';
 var TZ              = 'America/Sao_Paulo';
 
+// Abas de cada entidade do sistema + seus cabeçalhos
+var TAB_USER = 'Usuarios';
+var TAB_PROC = 'Procedimentos';
+var TAB_TIPO = 'Tipos';
+var TAB_EMP  = 'Empresas';
+var TAB_CFG  = 'ConfigAgenda';
+var HEAD_USER = ['username','passwordB64','role','name','email','mustChangePassword'];
+var HEAD_PROC = ['nome','categoria'];
+var HEAD_CFG  = ['inicio','fim','intervalo','almocoIni','almocoFim'];
+
 // ---------- INSTALAÇÃO (rode 1x) ----------
 function instalarSistema() {
-  getAba();                 // garante a aba e cabeçalho
+  getAba();                 // aba de agendamentos
+  ensureSheet(TAB_USER, HEAD_USER);
+  ensureSheet(TAB_PROC, HEAD_PROC);
+  ensureSheet(TAB_TIPO, ['nome']);
+  ensureSheet(TAB_EMP,  ['nome']);
+  ensureSheet(TAB_CFG,  HEAD_CFG);
   embelezarPlanilha();      // formata bonito
   instalarGatilhoDiario();  // agenda o e-mail diário
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Sistema instalado! Relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO + ' para ' + EMAIL_RELATORIO,
+    'Sistema instalado! Abas criadas + relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO,
     'GRO Saúde', 8);
+}
+
+// Garante que uma aba exista com o cabeçalho informado
+function ensureSheet(nome, head) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var aba = ss.getSheetByName(nome);
+  if (!aba) { aba = ss.insertSheet(nome); aba.appendRow(head); }
+  else if (aba.getLastRow() === 0) { aba.appendRow(head); }
+  return aba;
 }
 
 function instalarGatilhoDiario() {
@@ -47,7 +71,8 @@ function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'list';
   var out;
   try {
-    if (action === 'list')       out = { success:true, data: listar() };
+    if (action === 'getAll')     out = getAll();
+    else if (action === 'list')  out = { success:true, data: listar() };
     else if (action === 'stats') out = getEstatisticas();
     else if (action === 'enviarAgora') { enviarRelatorioDiario(); out = { success:true, msg:'Relatório enviado' }; }
     else out = { error:'ação desconhecida' };
@@ -61,13 +86,121 @@ function doPost(e) {
     var body = JSON.parse(e.postData.contents);
     var a = body.action;
     var d = body.data || {};
-    if (a === 'insert')      out = inserir(d);
-    else if (a === 'update') out = atualizar(d);
-    else if (a === 'delete') out = excluir(d.id);
+    // ----- Agendamentos -----
+    if (a === 'insert')             out = inserir(d);
+    else if (a === 'update')        out = atualizar(d);
+    else if (a === 'delete')        out = excluir(d.id);
+    // ----- Usuários -----
+    else if (a === 'saveUsuario')   out = saveUsuario(d);
+    else if (a === 'deleteUsuario') out = deleteUsuario(d.username);
+    // ----- Procedimentos / Exames -----
+    else if (a === 'saveProcedimento')   out = saveProcedimento(d);
+    else if (a === 'deleteProcedimento') out = deleteByName(TAB_PROC, d.nome);
+    // ----- Tipos de exame -----
+    else if (a === 'saveTipo')      out = saveName(TAB_TIPO, d.nome);
+    else if (a === 'deleteTipo')    out = deleteByName(TAB_TIPO, d.nome);
+    // ----- Empresas -----
+    else if (a === 'saveEmpresa')   out = saveName(TAB_EMP, d.nome);
+    else if (a === 'deleteEmpresa') out = deleteByName(TAB_EMP, d.nome);
+    // ----- Configuração da agenda -----
+    else if (a === 'saveConfig')    out = saveConfig(d);
+    // ----- Recuperação de senha -----
     else if (a === 'recuperarSenha') out = enviarCodigoRecuperacao(d);
     else out = { error:'ação desconhecida' };
   } catch(err) { out = { error:String(err) }; }
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---------- LEITURA AGREGADA (1 chamada traz tudo) ----------
+function getAll() {
+  return {
+    success: true,
+    agendamentos:  listar(),
+    usuarios:      listUsuarios(),
+    procedimentos: listProcedimentos(),
+    tipos:         listNames(TAB_TIPO),
+    empresas:      listNames(TAB_EMP),
+    config:        getConfig()
+  };
+}
+
+// ---------- USUÁRIOS ----------
+function listUsuarios() {
+  var aba = ensureSheet(TAB_USER, HEAD_USER);
+  var v = aba.getDataRange().getValues(); var res = [];
+  for (var i=1;i<v.length;i++) {
+    if (!v[i][0]) continue;
+    res.push({
+      username:String(v[i][0]), passwordB64:String(v[i][1]), role:String(v[i][2]),
+      name:String(v[i][3]), email:String(v[i][4]),
+      mustChangePassword: (String(v[i][5])==='true' || v[i][5]===true), fixo:false
+    });
+  }
+  return res;
+}
+function saveUsuario(d) {
+  if (!d || !d.username) return { error:'username obrigatório' };
+  var aba = ensureSheet(TAB_USER, HEAD_USER);
+  var v = aba.getDataRange().getValues();
+  var row = [d.username, d.passwordB64||'', d.role||'user', d.name||'', d.email||'', d.mustChangePassword?true:false];
+  for (var i=1;i<v.length;i++) if (String(v[i][0])===String(d.username)) {
+    aba.getRange(i+1,1,1,HEAD_USER.length).setValues([row]); return { success:true, updated:true };
+  }
+  aba.appendRow(row); return { success:true, created:true };
+}
+function deleteUsuario(username) {
+  var aba = ensureSheet(TAB_USER, HEAD_USER); var v = aba.getDataRange().getValues();
+  for (var i=v.length-1;i>=1;i--) if (String(v[i][0])===String(username)) { aba.deleteRow(i+1); return {success:true}; }
+  return { success:true, naoExistia:true };
+}
+
+// ---------- PROCEDIMENTOS (nome + categoria) ----------
+function listProcedimentos() {
+  var aba = ensureSheet(TAB_PROC, HEAD_PROC);
+  var v = aba.getDataRange().getValues(); var res = [];
+  for (var i=1;i<v.length;i++) if (v[i][0]) res.push({ nome:String(v[i][0]), categoria:String(v[i][1]||'Outros') });
+  return res;
+}
+function saveProcedimento(d) {
+  if (!d || !d.nome) return { error:'nome obrigatório' };
+  var aba = ensureSheet(TAB_PROC, HEAD_PROC); var v = aba.getDataRange().getValues();
+  for (var i=1;i<v.length;i++) if (String(v[i][0]).toLowerCase()===String(d.nome).toLowerCase()) {
+    aba.getRange(i+1,1,1,2).setValues([[d.nome, d.categoria||'Outros']]); return { success:true, updated:true };
+  }
+  aba.appendRow([d.nome, d.categoria||'Outros']); return { success:true, created:true };
+}
+
+// ---------- LISTAS SIMPLES (só "nome": Tipos, Empresas) ----------
+function listNames(tab) {
+  var aba = ensureSheet(tab, ['nome']); var v = aba.getDataRange().getValues(); var res = [];
+  for (var i=1;i<v.length;i++) if (v[i][0]) res.push(String(v[i][0]));
+  return res;
+}
+function saveName(tab, nome) {
+  if (!nome) return { error:'nome obrigatório' };
+  var aba = ensureSheet(tab, ['nome']); var v = aba.getDataRange().getValues();
+  for (var i=1;i<v.length;i++) if (String(v[i][0]).toLowerCase()===String(nome).toLowerCase()) return { success:true, jaExistia:true };
+  aba.appendRow([nome]); return { success:true, created:true };
+}
+function deleteByName(tab, nome) {
+  var aba = ensureSheet(tab, ['nome']); var v = aba.getDataRange().getValues();
+  for (var i=v.length-1;i>=1;i--) if (String(v[i][0])===String(nome)) { aba.deleteRow(i+1); return {success:true}; }
+  return { success:true, naoExistia:true };
+}
+
+// ---------- CONFIG DA AGENDA ----------
+function getConfig() {
+  var aba = ensureSheet(TAB_CFG, HEAD_CFG); var v = aba.getDataRange().getValues();
+  if (v.length < 2) return null;
+  return { inicio:String(v[1][0]||'07:00'), fim:String(v[1][1]||'17:00'),
+           intervalo:Number(v[1][2]||10), almocoIni:String(v[1][3]||'12:00'), almocoFim:String(v[1][4]||'13:00') };
+}
+function saveConfig(d) {
+  var aba = ensureSheet(TAB_CFG, HEAD_CFG);
+  var row = [d.inicio||'07:00', d.fim||'17:00', d.intervalo||10, d.almocoIni||'', d.almocoFim||''];
+  if (aba.getLastRow() < 2) aba.appendRow(row);
+  else aba.getRange(2,1,1,HEAD_CFG.length).setValues([row]);
+  return { success:true };
 }
 
 function getAba() {
@@ -105,6 +238,7 @@ function inserir(d) {
   var aba = getAba();
   aba.appendRow([d.id||('ag_'+Date.now()), d.data, d.hora, d.paciente, d.cpf, d.empresa,
     d.tipo, (d.procedimentos||[]).join('; '), d.medico, d.status, d.obs, d.criadoEm||new Date().toISOString()]);
+  if (d.empresa) try { saveName(TAB_EMP, d.empresa); } catch(e) {}  // registra empresa nova
   return { success:true };
 }
 

@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="sync.js"></script>
 <script src="db.js"></script>
 <script src="data.js"></script>
 <link rel="stylesheet" href="style.css"/>
@@ -128,9 +129,10 @@
 const TIPO_CORES = {'ASO Admissional':'#16A94A','ASO Periódico':'#2980b9','ASO Demissional':'#e74c3c','ASO Retorno ao Trabalho':'#e67e22','ASO Mudança de Riscos':'#9b59b6','ASO Mudança de Função':'#8e44ad','Consulta Médica':'#1abc9c','Coleta Laboratorial':'#f39c12'};
 const STATUS_CORES = {'Agendado':'#f39c12','Confirmado':'#2980b9','Realizado':'#16A94A','Faltou':'#e74c3c','Reagendado':'#9b59b6','Cancelado':'#7f8c8d'};
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (!GRO_AUTH.requireLogin()) return;
   document.getElementById('agendaData').value = new Date().toISOString().split('T')[0];
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { try { await GRO_SYNC.inicializar(); } catch {} }
   renderAgenda();
 });
 

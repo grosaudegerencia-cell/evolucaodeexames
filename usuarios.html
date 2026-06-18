@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="sync.js"></script>
 <script src="db.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="sistema.css"/>
@@ -112,10 +113,11 @@
 
 <script src="nav.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const u = GRO_AUTH.requireAdmin();
   if (!u) return;
   document.getElementById('userGreet').textContent = `— ${u.name}`;
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { try { await GRO_SYNC.inicializar(); } catch {} }
   renderUsers();
 });
 

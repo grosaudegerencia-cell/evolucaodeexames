@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="sync.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <style>
 .page-body{max-width:1100px;margin:0 auto;padding:1.5rem}
@@ -266,7 +267,7 @@ const TIPO_CORES = {'ASO Admissional':'#1a6e3c','ASO Periódico':'#27ae60','ASO 
 let todosAgendamentos = [];
 
 // ---- INIT ----
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const user = GRO_AUTH.requireLogin();
   if (!user) return;
   document.getElementById('userGreet').textContent = `Usuário: ${user.name}`;
@@ -274,10 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Data padrão = hoje
   document.getElementById('fData').value = new Date().toISOString().split('T')[0];
 
-  // Popula datalist de empresas
+  // Sincroniza com a planilha (multi-dispositivo)
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { try { await GRO_SYNC.inicializar(); } catch {} }
+
+  // Popula datalist de empresas (da planilha sincronizada + histórico)
   const dl = document.getElementById('empresasList');
-  const empresas = [...new Set(GRO_EXAMES.map(r => r.empresa))].sort();
-  empresas.forEach(e => { const o = document.createElement('option'); o.value = e; dl.appendChild(o); });
+  let empresas = (typeof GRO_DB !== 'undefined') ? GRO_DB.getEmpresas() : [];
+  if (typeof GRO_EXAMES !== 'undefined') empresas = empresas.concat(GRO_EXAMES.map(r => r.empresa));
+  [...new Set(empresas)].filter(Boolean).sort().forEach(e => {
+    const o = document.createElement('option'); o.value = e; dl.appendChild(o);
+  });
 
   verificarSheetsConfig();
   carregarAgendamentos();

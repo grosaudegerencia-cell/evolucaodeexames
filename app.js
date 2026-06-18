@@ -39,7 +39,7 @@ let tableSearch    = "";
 let charts         = {};
 
 // ---- INIT ----
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const user = GRO_AUTH.requireLogin();
   if (!user) return;
 
@@ -52,6 +52,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   setDate();
+
+  // Sincroniza com o Google Sheets (multi-dispositivo) antes de montar a tela
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) {
+    try { await GRO_SYNC.inicializar(); } catch {}
+  }
+
   mesclarAgendamentosLocais();
   populateFilters();
   applyFilters();

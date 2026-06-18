@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="config.js"></script>
 <script src="auth.js"></script>
+<script src="sync.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,#0d3320 0%,#1a6e3c 50%,#0d3320 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
@@ -119,10 +120,18 @@ body{font-family:'Inter',system-ui,sans-serif;background:linear-gradient(135deg,
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (GRO_AUTH.isLoggedIn()) {
     const u = GRO_AUTH.getUser();
     window.location.href = (u && u.mustChangePassword) ? 'trocar-senha.html' : 'index.html';
+    return;
+  }
+  // Baixa a lista de usuários da planilha para permitir login em qualquer aparelho
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) {
+    const btn = document.getElementById('btnLogin');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sincronizando…'; }
+    try { await GRO_SYNC.puxarTudo(6000); } catch {}
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
   }
 });
 

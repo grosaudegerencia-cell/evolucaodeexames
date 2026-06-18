@@ -111,8 +111,26 @@ const GRO_AUTH = {
     } else {
       const extra = this.getExtraUsers();
       const i = extra.findIndex(u => u.username === username);
-      if (i >= 0) { extra[i] = { ...extra[i], ...patch }; this.saveExtraUsers(extra); }
+      if (i >= 0) {
+        extra[i] = { ...extra[i], ...patch };
+        this.saveExtraUsers(extra);
+        this._syncUser(extra[i]);   // propaga edição para a planilha
+      }
     }
+  },
+
+  // ---- Sincronização de usuários com a planilha ----
+  _syncUser(user) {
+    if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) {
+      GRO_SYNC.enviar('saveUsuario', {
+        username: user.username, passwordB64: user.passwordB64, role: user.role,
+        name: user.name, email: user.email || '', mustChangePassword: !!user.mustChangePassword,
+      });
+    }
+  },
+  _syncDeleteUser(username) {
+    if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo())
+      GRO_SYNC.enviar('deleteUsuario', { username });
   },
 
   emailValido(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); },
@@ -126,9 +144,11 @@ const GRO_AUTH = {
     if (this.getAllUsers().some(u => u.username === username))
       return { ok:false, msg:'Já existe um usuário com esse nome.' };
     const extra = this.getExtraUsers();
-    extra.push({ username, passwordB64: btoa(password), name, role: role||'user',
-                 email, mustChangePassword: mustChangePassword !== false, fixo:false });
+    const novo = { username, passwordB64: btoa(password), name, role: role||'user',
+                   email, mustChangePassword: mustChangePassword !== false, fixo:false };
+    extra.push(novo);
     this.saveExtraUsers(extra);
+    this._syncUser(novo);   // grava na planilha (multi-dispositivo)
     return { ok:true };
   },
 
@@ -154,8 +174,9 @@ const GRO_AUTH = {
       const dis = this.getDisabled();
       if (!dis.includes(username)) { dis.push(username); this.saveDisabled(dis); }
     } else {
-      // usuário criado pelo admin: remove do localStorage
+      // usuário criado pelo admin: remove do localStorage e da planilha
       this.saveExtraUsers(this.getExtraUsers().filter(u => u.username !== username));
+      this._syncDeleteUser(username);
     }
     return { ok:true };
   },

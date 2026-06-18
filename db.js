@@ -51,13 +51,16 @@ const GRO_DB = {
     const list = this.getProcedimentos();
     if (list.some(p => p.nome.toLowerCase() === nome.toLowerCase()))
       return { ok:false, msg:'Esse exame já está cadastrado.' };
-    list.push({ nome, categoria: categoria||'Outros' });
+    const novo = { nome, categoria: categoria||'Outros' };
+    list.push(novo);
     list.sort((a,b)=>a.nome.localeCompare(b.nome));
     this.saveProcedimentos(list);
+    this._syncSheets('saveProcedimento', novo);
     return { ok:true };
   },
   removeProcedimento(nome) {
     this.saveProcedimentos(this.getProcedimentos().filter(p => p.nome !== nome));
+    this._syncSheets('deleteProcedimento', { nome });
     return { ok:true };
   },
 
@@ -78,10 +81,12 @@ const GRO_DB = {
       return { ok:false, msg:'Esse tipo já está cadastrado.' };
     list.push(nome); list.sort();
     this.saveTipos(list);
+    this._syncSheets('saveTipo', { nome });
     return { ok:true };
   },
   removeTipo(nome) {
     this.saveTipos(this.getTipos().filter(t => t !== nome));
+    this._syncSheets('deleteTipo', { nome });
     return { ok:true };
   },
 
@@ -91,7 +96,25 @@ const GRO_DB = {
     try { return { ...this.CFG_DEFAULT, ...(JSON.parse(localStorage.getItem(this.CFG_KEY))||{}) }; }
     catch { return { ...this.CFG_DEFAULT }; }
   },
-  setConfigAgenda(cfg) { localStorage.setItem(this.CFG_KEY, JSON.stringify(cfg)); },
+  setConfigAgenda(cfg) {
+    localStorage.setItem(this.CFG_KEY, JSON.stringify(cfg));
+    this._syncSheets('saveConfig', cfg);
+  },
+
+  // ---------- Empresas (cache sincronizado) ----------
+  EMP_KEY: 'gro_empresas_cad',
+  getEmpresas() {
+    try { return JSON.parse(localStorage.getItem(this.EMP_KEY)) || []; } catch { return []; }
+  },
+  addEmpresa(nome) {
+    nome = (nome||'').trim();
+    if (!nome) return;
+    const list = this.getEmpresas();
+    if (list.some(e => e.toLowerCase() === nome.toLowerCase())) return;
+    list.push(nome); list.sort();
+    localStorage.setItem(this.EMP_KEY, JSON.stringify(list));
+    this._syncSheets('saveEmpresa', { nome });
+  },
 
   // Gera os horários (slots) de um dia conforme config
   gerarSlots() {
@@ -128,6 +151,7 @@ const GRO_DB = {
     list.push(reg);
     this.saveAgendamentos(list);
     this._syncSheets('insert', reg);
+    if (reg.empresa) this.addEmpresa(reg.empresa);   // mantém lista de empresas
     return reg;
   },
   updateAgendamento(id, patch) {
@@ -143,12 +167,14 @@ const GRO_DB = {
     return { ok:true };
   },
 
+  // Envia uma alteração para a planilha (usa a camada de sync se disponível)
   _syncSheets(action, data) {
+    if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { GRO_SYNC.enviar(action, data); return; }
     if (typeof GRO_CONFIG === 'undefined' || !GRO_CONFIG.SHEETS_URL) return;
     try {
       fetch(GRO_CONFIG.SHEETS_URL, {
         method:'POST', mode:'no-cors',
-        headers:{ 'Content-Type':'application/json' },
+        headers:{ 'Content-Type':'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, data })
       });
     } catch {}

@@ -76,7 +76,7 @@
       <input type="hidden" id="mId"/>
       <div class="mrow">
         <div class="mfield"><label>Data</label><input type="text" id="mData" readonly/></div>
-        <div class="mfield"><label>Horário</label><select id="mHora" onchange="document.getElementById('modalAg').dataset.hora=this.value"></select></div>
+        <div class="mfield"><label>Horário</label><input type="text" id="mHora" readonly/></div>
         <div class="mfield"><label>Status</label>
           <select id="mStatus">
             <option>Agendado</option><option>Confirmado</option><option>Realizado</option>
@@ -435,20 +435,10 @@ function renderProcChecks(marcados) {
   });
 }
 
-// Preenche o select de horário com as vagas livres do dia (+ o horário atual em edição)
+// Horário é estático: fixa a vaga escolhida na agenda
 function preencherHorarios(selected) {
-  const sel = document.getElementById('mHora');
-  if (!sel) return;
-  const data = dataAtual();
-  const ocupadas = new Set(GRO_DB.getPorData(data).map(a => a.hora));
-  const opts = [];
-  GRO_DB.gerarSlots().forEach(s => {
-    if (s.almoco) return;
-    if (!ocupadas.has(s.hora) || s.hora === selected) opts.push(s.hora);
-  });
-  if (selected && !opts.includes(selected)) opts.unshift(selected);
-  sel.innerHTML = opts.map(h => `<option value="${h}"${h===selected?' selected':''}>${h}</option>`).join('');
-  sel.value = selected;
+  const el = document.getElementById('mHora');
+  if (el) el.value = selected;
   document.getElementById('modalAg').dataset.hora = selected;
 }
 

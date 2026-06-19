@@ -103,18 +103,34 @@
         </div>
       </div>
 
-      <!-- Empresa com botões Nova + Contabilidade -->
+      <!-- Empresa: busca por nome / CNPJ / CEI / CPF -->
       <div class="mrow">
         <div class="mfield grow">
           <label>Empresa *</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
-            <input type="text" id="mEmpresa" list="empList" placeholder="Empresa" style="flex:1;min-width:140px"/>
-            <datalist id="empList"></datalist>
+            <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
+              <input type="text" id="mEmpresa" placeholder="Buscar por nome, CNPJ, CEI ou CPF..." autocomplete="off" style="width:100%" onfocus="buscarEmpresa()" oninput="buscarEmpresa()"/>
+              <div id="empSugg" class="sugg-list" style="display:none"></div>
+            </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novaEmpresaModal()" title="Cadastrar nova empresa">+ Nova</button>
-            <button type="button" class="btn-mini-blue" onclick="contabilidadeModal()" title="Localizar/cadastrar escritório de contabilidade">🏦 Contabilidade</button>
           </div>
+          <datalist id="empList"></datalist>
         </div>
         <div class="mfield"><label>Tipo de Exame *</label><select id="mTipo"></select></div>
+      </div>
+
+      <!-- Contabilidade: localizar por parte do nome -->
+      <div class="mrow">
+        <div class="mfield grow">
+          <label>Contabilidade</label>
+          <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
+            <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
+              <input type="text" id="mContabilidade" placeholder="Localizar contabilidade por nome..." autocomplete="off" style="width:100%" onfocus="buscarContabilidade()" oninput="buscarContabilidade()"/>
+              <div id="contSugg" class="sugg-list" style="display:none"></div>
+            </div>
+            <button type="button" class="btn-mini btn-mini-add" onclick="contabilidadeModal()" title="Cadastrar contabilidade">+ Nova</button>
+          </div>
+        </div>
       </div>
 
       <div class="mfield">
@@ -183,7 +199,7 @@
     <div class="modal-head"><h3>Cadastrar Empresa</h3><button class="modal-x" onclick="fecharModalEmp()">×</button></div>
     <div class="modal-body">
       <div class="mfield"><label>Nome da Empresa *</label><input type="text" id="empNome" placeholder="Razão social ou nome fantasia"/></div>
-      <div class="mfield"><label>CNPJ</label><input type="text" id="empCnpj" placeholder="00.000.000/0001-00"/></div>
+      <div class="mfield"><label>CNPJ / CEI / CPF</label><input type="text" id="empCnpj" placeholder="CNPJ, CEI ou CPF da empresa"/></div>
       <div class="mfield"><label>Responsável / Contato</label><input type="text" id="empContato" placeholder="Nome do responsável"/></div>
       <div class="mfield"><label>Telefone</label><input type="text" id="empTel" placeholder="(00) 00000-0000"/></div>
       <div class="mfield"><label>E-mail</label><input type="email" id="empEmail" placeholder="email@empresa.com.br"/></div>
@@ -401,6 +417,7 @@ function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
   document.getElementById('mCpf').value      = '';
   document.getElementById('mMedico').value   = '';
   document.getElementById('mEmpresa').value  = empresa;
+  document.getElementById('mContabilidade').value = '';
   document.getElementById('mTipo').value     = tipo;
   document.getElementById('mStatus').value   = status || 'Agendado';
   document.getElementById('novoProc').value  = '';
@@ -458,6 +475,61 @@ function atualizarListaEmpresas() {
   dl.innerHTML = empresas.map(e=>`<option value="${e}">`).join('');
 }
 
+// ---------- BUSCA DE EMPRESAS (nome / CNPJ / CEI / CPF) ----------
+function listaEmpresasFull() {
+  const todas = JSON.parse(localStorage.getItem('gro_empresas_full')||'[]');
+  const contabils = new Set(todas.filter(e=>e.tipo==='contabilidade').map(e=>(e.nome||'').toLowerCase()));
+  const map = {};
+  todas.filter(e=>e.tipo!=='contabilidade' && e.nome).forEach(e => {
+    map[e.nome.toLowerCase()] = { nome:e.nome, doc:(e.cnpj||e.doc||'') };
+  });
+  [...GRO_DB.getEmpresas(), ...GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean)].forEach(n => {
+    const k = n.toLowerCase();
+    if (!contabils.has(k) && !map[k]) map[k] = { nome:n, doc:'' };
+  });
+  return Object.values(map).sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function buscarEmpresa() {
+  const q = (document.getElementById('mEmpresa').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('empSugg');
+  let list = listaEmpresasFull();
+  if (q) list = list.filter(e => e.nome.toLowerCase().includes(q) || (e.doc||'').toLowerCase().includes(q));
+  if (!list.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = list.slice(0,12).map(e => {
+    const ne = e.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarEmpresa('${ne}')"><strong>${e.nome}</strong>${e.doc?'<small>'+e.doc+'</small>':''}</div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+function selecionarEmpresa(nome) {
+  document.getElementById('mEmpresa').value = nome;
+  document.getElementById('empSugg').style.display = 'none';
+}
+
+// ---------- BUSCA DE CONTABILIDADE (por parte do nome) ----------
+function listaContabilidades() {
+  return JSON.parse(localStorage.getItem('gro_empresas_full')||'[]')
+    .filter(e=>e.tipo==='contabilidade' && e.nome)
+    .map(e=>({ nome:e.nome, sub:[e.cidade,e.contato].filter(Boolean).join(' · ') }))
+    .sort((a,b)=>a.nome.localeCompare(b.nome));
+}
+function buscarContabilidade() {
+  const q = (document.getElementById('mContabilidade').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('contSugg');
+  let list = listaContabilidades();
+  if (q) list = list.filter(c => c.nome.toLowerCase().includes(q));
+  if (!list.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = list.slice(0,12).map(c => {
+    const ne = c.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarContabilidade('${ne}')"><strong>${c.nome}</strong>${c.sub?'<small>'+c.sub+'</small>':''}</div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+function selecionarContabilidade(nome) {
+  document.getElementById('mContabilidade').value = nome;
+  document.getElementById('contSugg').style.display = 'none';
+}
+
 function atualizarListaMedicos() {
   const dl = document.getElementById('medList');
   if (!dl) return;
@@ -473,7 +545,7 @@ function novoAg(hora) {
   document.getElementById('modalTitle').textContent = 'Agendar vaga';
   document.getElementById('mId').value = '';
   document.getElementById('mData').value = new Date(dataAtual()+'T12:00').toLocaleDateString('pt-BR');
-  ['mPaciente','mCpf','mEmpresa','mMedico','mObs','novoProc'].forEach(id=>document.getElementById(id).value='');
+  ['mPaciente','mCpf','mEmpresa','mContabilidade','mMedico','mObs','novoProc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mStatus').value = 'Agendado';
   fecharSuggs();
   document.getElementById('btnExcluir').style.display = 'none';
@@ -491,6 +563,7 @@ function editarAg(id) {
   document.getElementById('mPaciente').value = a.paciente||'';
   document.getElementById('mCpf').value = a.cpf||'';
   document.getElementById('mEmpresa').value = a.empresa||'';
+  document.getElementById('mContabilidade').value = a.contabilidade||'';
   document.getElementById('mTipo').value = a.tipo||'';
   document.getElementById('mMedico').value = a.medico||'';
   document.getElementById('mObs').value = a.obs||'';
@@ -511,7 +584,7 @@ function fecharModal() {
 }
 
 function fecharSuggs() {
-  ['pacSugg','cpfSugg','medSugg'].forEach(id => {
+  ['pacSugg','cpfSugg','medSugg','empSugg','contSugg'].forEach(id => {
     const el = document.getElementById(id); if (el) el.style.display = 'none';
   });
 }
@@ -530,6 +603,7 @@ function salvarAg() {
     hora: document.getElementById('mHora').value || document.getElementById('modalAg').dataset.hora,
     paciente, cpf: document.getElementById('mCpf').value.trim(),
     empresa, tipo, procedimentos: procs,
+    contabilidade: document.getElementById('mContabilidade').value.trim(),
     medico: document.getElementById('mMedico').value.trim(),
     obs: document.getElementById('mObs').value.trim(),
     status: document.getElementById('mStatus').value,
@@ -672,13 +746,16 @@ function adicionarProcedimento() {
   const nome = (inp.value||'').trim();
   if (!nome) { toast('Informe o nome do exame.','error'); return; }
   const marcados = [...document.querySelectorAll('#mProcs input:checked')].map(c=>c.value);
-  const r = GRO_DB.addProcedimento(nome);
-  if (!r.ok) {
-    // Já existe: apenas marca o item correspondente
+  // Impede duplicidade: avisa que o exame já está cadastrado
+  const jaExiste = GRO_DB.getProcedimentos().some(p => p.nome.toLowerCase() === nome.toLowerCase());
+  if (jaExiste) {
     const existente = document.querySelector(`#mProcs input[value="${CSS.escape(nome)}"]`);
-    if (existente) { existente.checked = true; inp.value=''; toast('Exame já listado — marcado.','success'); return; }
-    toast(r.msg || 'Não foi possível cadastrar.', 'error'); return;
+    if (existente) existente.checked = true;
+    toast('Este exame já está cadastrado.', 'error');
+    return;
   }
+  const r = GRO_DB.addProcedimento(nome);
+  if (!r.ok) { toast(r.msg || 'Não foi possível cadastrar.', 'error'); return; }
   marcados.push(nome);
   renderProcChecks(marcados);
   inp.value = '';
@@ -690,6 +767,8 @@ function novaEmpresaModal() {
   ['empNome','empCnpj','empContato','empTel','empEmail'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('empNome').value = document.getElementById('mEmpresa').value.trim();
+  fecharSuggs();
   document.getElementById('modalEmp').classList.add('show');
 }
 function fecharModalEmp() { document.getElementById('modalEmp').classList.remove('show'); }
@@ -719,6 +798,8 @@ function contabilidadeModal() {
   ['contNome','contCidade','contContato'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('contNome').value = document.getElementById('mContabilidade').value.trim();
+  fecharSuggs();
   document.getElementById('modalCont').classList.add('show');
 }
 function fecharModalCont() { document.getElementById('modalCont').classList.remove('show'); }
@@ -736,6 +817,9 @@ function salvarContabilidade() {
   if (!list.some(e=>e.tipo==='contabilidade' && e.nome.toLowerCase()===nome.toLowerCase())) {
     list.push(obj); localStorage.setItem('gro_empresas_full', JSON.stringify(list));
   }
+  // Mostra a contabilidade escolhida no campo do agendamento
+  const campo = document.getElementById('mContabilidade');
+  if (campo) campo.value = nome;
   fecharModalCont();
   toast('Contabilidade cadastrada!','success');
 }

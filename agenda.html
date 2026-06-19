@@ -958,31 +958,32 @@ function imprimirEtiquetas() {
   const etqs = itens.map(it => `
     <div class="etq">
       <div class="nome">${escapeHtml(it.nome)||'—'}</div>
-      <div class="linha"><span class="lbl">CPF:</span> ${escapeHtml(it.cpf)||'—'}</div>
-      <div class="linha"><span class="lbl">Nascimento:</span> ${it.nasc||'—'}</div>
-      <div class="exames"><span class="lbl">Exames:</span> ${escapeHtml(it.exames)||'—'}</div>
+      <div class="dados"><span class="lbl">CPF:</span> ${escapeHtml(it.cpf)||'—'} &nbsp;<span class="lbl">Nasc:</span> ${it.nasc||'—'}</div>
+      <div class="exames">${escapeHtml(it.exames)||'—'}</div>
       <div class="rod"><img src="${logoUrl}" alt="" onerror="this.style.display='none'"/><span>GRO Saúde</span></div>
     </div>`).join('');
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas ${data}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:8px;background:#fff}
-    .cab{font-size:11px;color:#666;margin-bottom:8px}
-    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    .etq{border:1px solid #333;border-radius:6px;padding:8px 10px;page-break-inside:avoid;break-inside:avoid;min-height:118px;display:flex;flex-direction:column}
-    .nome{font-size:13px;font-weight:800;text-transform:uppercase;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:4px;line-height:1.15}
-    .linha{font-size:11px;margin:1px 0}
-    .exames{font-size:11px;margin:3px 0;flex:1;line-height:1.25}
-    .lbl{font-weight:700;color:#333}
-    .rod{display:flex;align-items:center;gap:5px;margin-top:5px;border-top:1px solid #eee;padding-top:4px}
-    .rod img{height:16px;width:auto}
-    .rod span{font-size:10px;font-weight:800;color:#1B392A}
-    .barra{margin:12px 0;text-align:center}
+    @page{ size:50mm 25mm; margin:0; }
+    body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#e9eef0}
+    .cab{font-size:11px;color:#555;padding:8px 8px 2px}
+    .barra{padding:6px 8px 12px}
     .barra button{background:#1a6e3c;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer}
-    @media print{ body{padding:0} .noprint{display:none} .grid{gap:6px} }
+    .folha{display:flex;flex-direction:column;gap:6px;padding:6px 8px}
+    .etq{width:50mm;height:25mm;background:#fff;border:1px solid #999;padding:1.3mm 1.6mm;overflow:hidden;display:flex;flex-direction:column;page-break-after:always;break-after:page}
+    .etq:last-child{page-break-after:auto;break-after:auto}
+    .nome{font-size:7.2pt;font-weight:800;text-transform:uppercase;line-height:1.04;max-height:5.2mm;overflow:hidden}
+    .dados{font-size:6pt;line-height:1.15;margin-top:.4mm;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .exames{font-size:6pt;line-height:1.1;margin-top:.4mm;flex:1;overflow:hidden}
+    .lbl{font-weight:700}
+    .rod{display:flex;align-items:center;gap:1mm;margin-top:.3mm}
+    .rod img{height:3.2mm;width:auto}
+    .rod span{font-size:5.6pt;font-weight:800;color:#1B392A}
+    @media print{ body{background:#fff} .noprint{display:none} .folha{gap:0;padding:0} .etq{border:none} }
   </style></head><body>
-    <div class="cab noprint">Etiquetas de coleta laboratorial &nbsp;·&nbsp; ${dataBR} &nbsp;·&nbsp; ${itens.length} etiqueta(s)</div>
-    <div class="grid">${etqs}</div>
+    <div class="cab noprint">Etiquetas de coleta laboratorial (50 × 25 mm) &nbsp;·&nbsp; ${dataBR} &nbsp;·&nbsp; ${itens.length} etiqueta(s) &nbsp;—&nbsp; selecione o papel/etiqueta 50×25 mm na impressora.</div>
+    <div class="folha">${etqs}</div>
     <div class="barra noprint"><button onclick="window.print()">🖨 Imprimir etiquetas</button></div>
     <scr`+`ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);};</scr`+`ipt>
   </body></html>`;

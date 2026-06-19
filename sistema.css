@@ -34,15 +34,15 @@
 .dash-title-actions .update-date { font-size:.8rem; font-weight:700; color:var(--text-primary); }
 
 /* ---------- AGENDA ---------- */
-.agenda-bar { display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--border); border-radius:12px; padding:.85rem 1.1rem; margin-bottom:1rem; box-shadow:var(--shadow-sm); }
-.agenda-nav { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.agenda-bar { display:flex; flex-wrap:wrap; gap:.55rem; align-items:center; justify-content:flex-start; background:#fff; border:1px solid var(--border); border-radius:12px; padding:.85rem 1.1rem; margin-bottom:1rem; box-shadow:var(--shadow-sm); }
+.agenda-nav { display:contents; }
 .agenda-nav input[type=date] { height:38px; border:1.5px solid var(--border); border-radius:8px; padding:0 .6rem; font-family:inherit; font-size:.9rem; color:var(--text-primary); }
 .btn-nav { width:38px; height:38px; border:1.5px solid var(--border); background:#fff; border-radius:8px; font-size:1.4rem; line-height:1; cursor:pointer; color:var(--gro-green); font-weight:700; }
 .btn-nav:hover { border-color:var(--gro-green-brand); background:var(--gro-green-ghost); }
 .btn-hoje { height:38px; padding:0 1rem; border:1.5px solid var(--gro-green); background:#fff; color:var(--gro-green); border-radius:8px; font-weight:600; font-size:.82rem; cursor:pointer; font-family:inherit; }
 .btn-hoje:hover { background:var(--gro-green); color:#fff; }
 .agenda-dow { font-size:.92rem; font-weight:700; color:var(--text-primary); margin-left:.5rem; }
-.agenda-stats { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+.agenda-stats { display:contents; }
 .ag-chip { font-size:.78rem; padding:.35rem .75rem; border-radius:20px; font-weight:500; }
 .ag-chip strong { font-weight:800; }
 .ag-chip-livre { background:#eafaf1; color:#16a94a; }

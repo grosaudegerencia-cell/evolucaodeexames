@@ -30,6 +30,8 @@
 .btn-mini-blue:hover{background:#dbeafe}
 .btn-pdf{display:inline-flex;align-items:center;gap:.35rem;background:#fff;color:#1a6e3c;border:1.5px solid #3AB86A;border-radius:8px;padding:.34rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn-pdf:hover{background:#eafaf1}
+.btn-tag{display:inline-flex;align-items:center;gap:.35rem;background:#fff;color:#1d4ed8;border:1.5px solid #93c5fd;border-radius:8px;padding:.34rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-tag:hover{background:#eff6ff}
 </style>
 </head>
 <body class="sys-body">
@@ -47,6 +49,7 @@
       <span class="agenda-dow" id="agendaDow"></span>
     </div>
     <div class="agenda-stats">
+      <button class="btn-tag" onclick="imprimirEtiquetas()" title="Imprimir etiquetas para coletas laboratoriais">🏷 Imprime Etiqueta</button>
       <button class="btn-pdf" onclick="exportarDiaPDF()" title="Exportar atendimentos laboratoriais do dia em PDF">🖨 Exp. p/ Laboratório</button>
       <span class="ag-chip ag-chip-livre">Livres: <strong id="stLivres">—</strong></span>
       <span class="ag-chip ag-chip-ocup">Ocupadas: <strong id="stOcup">—</strong></span>
@@ -942,7 +945,51 @@ function salvarConfig() {
 }
 
 // ---------- EXPORTAR PDF DO DIA ----------
+function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function formatarDataBR(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : iso; }
+
+// ---------- IMPRIMIR ETIQUETAS DE COLETA (laboratorial) ----------
+function imprimirEtiquetas() {
+  const data = dataAtual();
+  const itens = coletarAtendimentosDia(data);
+  if (!itens.length) { toast('Não há atendimentos laboratoriais neste dia.', 'error'); return; }
+  const logoUrl = new URL('logo.png', location.href).href;
+  const dataBR = new Date(data+'T12:00').toLocaleDateString('pt-BR');
+  const etqs = itens.map(it => `
+    <div class="etq">
+      <div class="nome">${escapeHtml(it.nome)||'—'}</div>
+      <div class="linha"><span class="lbl">CPF:</span> ${escapeHtml(it.cpf)||'—'}</div>
+      <div class="linha"><span class="lbl">Nascimento:</span> ${it.nasc||'—'}</div>
+      <div class="exames"><span class="lbl">Exames:</span> ${escapeHtml(it.exames)||'—'}</div>
+      <div class="rod"><img src="${logoUrl}" alt="" onerror="this.style.display='none'"/><span>GRO Saúde</span></div>
+    </div>`).join('');
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Etiquetas ${data}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:8px;background:#fff}
+    .cab{font-size:11px;color:#666;margin-bottom:8px}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .etq{border:1px solid #333;border-radius:6px;padding:8px 10px;page-break-inside:avoid;break-inside:avoid;min-height:118px;display:flex;flex-direction:column}
+    .nome{font-size:13px;font-weight:800;text-transform:uppercase;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:4px;line-height:1.15}
+    .linha{font-size:11px;margin:1px 0}
+    .exames{font-size:11px;margin:3px 0;flex:1;line-height:1.25}
+    .lbl{font-weight:700;color:#333}
+    .rod{display:flex;align-items:center;gap:5px;margin-top:5px;border-top:1px solid #eee;padding-top:4px}
+    .rod img{height:16px;width:auto}
+    .rod span{font-size:10px;font-weight:800;color:#1B392A}
+    .barra{margin:12px 0;text-align:center}
+    .barra button{background:#1a6e3c;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer}
+    @media print{ body{padding:0} .noprint{display:none} .grid{gap:6px} }
+  </style></head><body>
+    <div class="cab noprint">Etiquetas de coleta laboratorial &nbsp;·&nbsp; ${dataBR} &nbsp;·&nbsp; ${itens.length} etiqueta(s)</div>
+    <div class="grid">${etqs}</div>
+    <div class="barra noprint"><button onclick="window.print()">🖨 Imprimir etiquetas</button></div>
+    <scr`+`ipt>window.onload=function(){setTimeout(function(){try{window.print();}catch(e){}},500);};</scr`+`ipt>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permita pop-ups para imprimir as etiquetas.', 'error'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+}
 
 // Conjunto de nomes de exames com categoria Laboratorial nos cadastros
 function nomesLaboratoriais() {

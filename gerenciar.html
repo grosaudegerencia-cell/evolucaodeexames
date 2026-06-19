@@ -106,8 +106,25 @@
       </div>
     </div>
 
+    <!-- CARGOS -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-3V5a2 2 0 00-2-2H9a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM9 5h6v2H9V5z"/></svg>
+        <span>Cargos</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addCargo(event)" class="cad-form">
+          <div class="mfield grow"><label>Nome do cargo *</label><input type="text" id="cargoNome" placeholder="Ex.: Operador de Empilhadeira" required/></div>
+          <button type="submit" class="btn-primary" id="cargoBtn">+ Adicionar</button>
+          <button type="button" class="btn-cancel-edit" id="cargoCancel" onclick="cancelCargo()" style="display:none">Cancelar</button>
+        </form>
+        <div class="cad-count" id="cargoCount"></div>
+        <div class="cad-list" id="cargoList"></div>
+      </div>
+    </div>
+
   </div>
-  <p class="cad-note">Os médicos, empresas, contabilidades e funcionários cadastrados aqui ficam disponíveis automaticamente ao agendar uma vaga na <a href="agenda.html">Agenda</a>.</p>
+  <p class="cad-note">Os médicos, empresas, contabilidades, funcionários e cargos cadastrados aqui ficam disponíveis automaticamente ao agendar uma vaga na <a href="agenda.html">Agenda</a>.</p>
 </main>
 
 <div id="toast" class="toast"></div>
@@ -117,6 +134,7 @@
 const KEY_MED = 'gro_medicos_cad';
 const KEY_EMP = 'gro_empresas_full';
 const KEY_PAC = 'gro_pacientes_cad';
+const KEY_CARGO = 'gro_cargos_cad';
 
 const Store = {
   get(k){ try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } },
@@ -130,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTudo();
 });
 
-function renderTudo(){ renderMed(); renderEmp(); renderCont(); renderPac(); atualizarDatalistEmp(); }
+function renderTudo(){ renderMed(); renderEmp(); renderCont(); renderPac(); renderCargo(); atualizarDatalistEmp(); }
 
 // ---------- MÉDICOS ----------
 let editMed = null;
@@ -373,6 +391,60 @@ function renderPac(){
       </span>
     </div>`;
   }).join('');
+}
+
+// ---------- CARGOS (lista de strings) ----------
+let editCargo = null;
+function addCargo(e){
+  e.preventDefault();
+  const nome = document.getElementById('cargoNome').value.trim();
+  if (!nome) return;
+  let list = Store.get(KEY_CARGO);
+  const dup = list.some(c => c.toLowerCase()===nome.toLowerCase() && c!==editCargo);
+  if (dup) { toast('Esse cargo já está cadastrado.','error'); return; }
+  if (editCargo !== null) {
+    list = list.map(c => c===editCargo ? nome : c);
+    toast('Cargo atualizado!','success');
+  } else {
+    list.push(nome);
+    toast('Cargo cadastrado!','success');
+  }
+  Store.set(KEY_CARGO, list);
+  cancelCargo(); renderCargo();
+}
+function editCargoItem(nome){
+  if (!Store.get(KEY_CARGO).includes(nome)) return;
+  document.getElementById('cargoNome').value = nome;
+  editCargo = nome;
+  document.getElementById('cargoBtn').textContent = 'Salvar';
+  document.getElementById('cargoCancel').style.display = '';
+  document.getElementById('cargoNome').focus();
+  renderCargo();
+}
+function cancelCargo(){
+  editCargo = null;
+  document.getElementById('cargoNome').value = '';
+  document.getElementById('cargoBtn').textContent = '+ Adicionar';
+  document.getElementById('cargoCancel').style.display = 'none';
+  renderCargo();
+}
+function delCargo(nome){
+  if (!confirm(`Remover o cargo "${nome}"?`)) return;
+  Store.set(KEY_CARGO, Store.get(KEY_CARGO).filter(c=>c!==nome));
+  if (editCargo===nome) cancelCargo();
+  renderCargo(); toast('Cargo removido.','success');
+}
+function renderCargo(){
+  const list = Store.get(KEY_CARGO);
+  document.getElementById('cargoCount').textContent = `${list.length} cargo(s) cadastrado(s)`;
+  document.getElementById('cargoList').innerHTML = list.map(c=>`
+    <div class="cad-item${editCargo===c?' editando':''}">
+      <span class="cad-item-name">${c}</span>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editCargoItem('${esc(c)}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delCargo('${esc(c)}')" title="Excluir">×</button>
+      </span>
+    </div>`).join('');
 }
 
 function atualizarDatalistEmp(){

@@ -14,6 +14,20 @@
 <script src="data.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="sistema.css"/>
+<style>
+.sugg-list{position:absolute;left:0;right:0;top:calc(100% + 2px);background:white;border:1.5px solid #3AB86A;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.14);z-index:600;max-height:200px;overflow-y:auto}
+.sugg-item{padding:.5rem .85rem;cursor:pointer;font-size:.82rem;color:#1B392A;transition:background .15s;border-bottom:1px solid #f0f7f3}
+.sugg-item:last-child{border-bottom:none}
+.sugg-item:hover{background:#eafaf1}
+.sugg-item strong{display:block}
+.sugg-item small{color:#7a9a82;font-size:.72rem}
+.mfield-rel{position:relative}
+.ag-toggle{display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:#2d5a3d;cursor:pointer;padding:.3rem .7rem;background:#eafaf1;border-radius:8px;border:1px solid #d4e6da;user-select:none}
+.ag-toggle input{cursor:pointer;accent-color:#3AB86A}
+.mrow-wrap{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-start}
+.btn-mini-blue{background:#eef6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:6px;padding:.3rem .65rem;font-size:.75rem;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+.btn-mini-blue:hover{background:#dbeafe}
+</style>
 </head>
 <body class="sys-body">
 
@@ -33,11 +47,12 @@
       <span class="ag-chip ag-chip-livre">Livres: <strong id="stLivres">—</strong></span>
       <span class="ag-chip ag-chip-ocup">Ocupadas: <strong id="stOcup">—</strong></span>
       <span class="ag-chip ag-chip-total">Total de vagas: <strong id="stTotal">—</strong></span>
-      <button class="btn-cfg" onclick="abrirConfig()" title="Configurar horários">⚙ Horários</button>
+      <label class="ag-toggle"><input type="checkbox" id="checkSoDisp" onchange="renderAgenda()"> Só livres</label>
+      <button class="btn-cfg" id="btnCfgHorarios" onclick="abrirConfig()" title="Configurar horários">⚙ Horários</button>
     </div>
   </div>
 
-  <!-- Grade de vagas (10 em 10 min) -->
+  <!-- Grade de vagas (5 em 5 min) -->
   <div class="agenda-grid-card">
     <div class="agenda-grid-head">
       <span style="width:90px">Horário</span>
@@ -69,22 +84,48 @@
           </select>
         </div>
       </div>
+
+      <!-- Paciente com autocomplete -->
       <div class="mrow">
-        <div class="mfield grow"><label>Paciente / Colaborador *</label><input type="text" id="mPaciente" placeholder="Nome completo"/></div>
+        <div class="mfield grow mfield-rel">
+          <label>Paciente / Colaborador *</label>
+          <input type="text" id="mPaciente" placeholder="Buscar por nome ou CPF..." oninput="buscarPaciente()" autocomplete="off"/>
+          <div id="pacSugg" class="sugg-list" style="display:none"></div>
+        </div>
         <div class="mfield"><label>CPF</label><input type="text" id="mCpf" placeholder="000.000.000-00"/></div>
       </div>
+
+      <!-- Empresa com botões Nova + Contabilidade -->
       <div class="mrow">
-        <div class="mfield grow"><label>Empresa *</label><input type="text" id="mEmpresa" list="empList" placeholder="Empresa"/>
-          <datalist id="empList"></datalist></div>
+        <div class="mfield grow">
+          <label>Empresa *</label>
+          <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
+            <input type="text" id="mEmpresa" list="empList" placeholder="Empresa" style="flex:1;min-width:140px"/>
+            <datalist id="empList"></datalist>
+            <button type="button" class="btn-mini btn-mini-add" onclick="novaEmpresaModal()" title="Cadastrar nova empresa">+ Nova</button>
+            <button type="button" class="btn-mini-blue" onclick="contabilidadeModal()" title="Localizar/cadastrar escritório de contabilidade">🏦 Contabilidade</button>
+          </div>
+        </div>
         <div class="mfield"><label>Tipo de Exame *</label><select id="mTipo"></select></div>
       </div>
+
       <div class="mfield">
         <label>Procedimentos / Exames * <span class="mhint">(marque os que serão feitos)</span></label>
         <div id="mProcs" class="proc-checks"></div>
       </div>
+
+      <!-- Médico com datalist + botão Novo -->
       <div class="mrow">
-        <div class="mfield grow"><label>Médico responsável</label><input type="text" id="mMedico" placeholder="Médico"/></div>
+        <div class="mfield grow">
+          <label>Médico responsável</label>
+          <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
+            <input type="text" id="mMedico" list="medList" placeholder="Médico" style="flex:1;min-width:140px"/>
+            <datalist id="medList"></datalist>
+            <button type="button" class="btn-mini btn-mini-add" onclick="novoMedicoModal()" title="Cadastrar médico">+ Novo</button>
+          </div>
+        </div>
       </div>
+
       <div class="mfield"><label>Observações</label><textarea id="mObs" rows="2" placeholder="Observações"></textarea></div>
     </div>
     <div class="modal-foot">
@@ -96,7 +137,7 @@
   </div>
 </div>
 
-<!-- MODAL config horários -->
+<!-- MODAL config horários (admin only) -->
 <div class="modal-overlay" id="modalCfg">
   <div class="modal-card" style="max-width:440px">
     <div class="modal-head"><h3>Configurar horários da agenda</h3><button class="modal-x" onclick="fecharConfig()">×</button></div>
@@ -112,7 +153,7 @@
         <div class="mfield"><label>Almoço início (opcional)</label><input type="time" id="cfgAlmI"/></div>
         <div class="mfield"><label>Almoço fim (opcional)</label><input type="time" id="cfgAlmF"/></div>
       </div>
-      <p class="mhint">As vagas são geradas de 5 em 5 minutos. O horário de almoço é opcional — deixe em branco para liberar todo o período para agendamentos.</p>
+      <p class="mhint">As vagas são geradas de 5 em 5 minutos. O horário de almoço é opcional — deixe em branco para liberar todo o período.</p>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
@@ -122,15 +163,84 @@
   </div>
 </div>
 
+<!-- SUB-MODAL: Nova Empresa -->
+<div class="modal-overlay" id="modalEmp">
+  <div class="modal-card" style="max-width:420px">
+    <div class="modal-head"><h3>Cadastrar Empresa</h3><button class="modal-x" onclick="fecharModalEmp()">×</button></div>
+    <div class="modal-body">
+      <div class="mfield"><label>Nome da Empresa *</label><input type="text" id="empNome" placeholder="Razão social ou nome fantasia"/></div>
+      <div class="mfield"><label>CNPJ</label><input type="text" id="empCnpj" placeholder="00.000.000/0001-00"/></div>
+      <div class="mfield"><label>Responsável / Contato</label><input type="text" id="empContato" placeholder="Nome do responsável"/></div>
+      <div class="mfield"><label>Telefone</label><input type="text" id="empTel" placeholder="(00) 00000-0000"/></div>
+      <div class="mfield"><label>E-mail</label><input type="email" id="empEmail" placeholder="email@empresa.com.br"/></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-secondary" onclick="fecharModalEmp()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarNovaEmpresa()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-MODAL: Contabilidade -->
+<div class="modal-overlay" id="modalCont">
+  <div class="modal-card" style="max-width:390px">
+    <div class="modal-head"><h3>Localizar / Cadastrar Contabilidade</h3><button class="modal-x" onclick="fecharModalCont()">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:.78rem;color:#7a9a82;margin-bottom:.85rem">Cadastre o escritório de contabilidade para vinculá-lo a funcionários desta empresa.</p>
+      <div class="mfield"><label>Nome da Contabilidade *</label><input type="text" id="contNome" placeholder="Ex.: XYZ Contabilidade Ltda"/></div>
+      <div class="mfield"><label>Cidade</label><input type="text" id="contCidade" placeholder="Cidade"/></div>
+      <div class="mfield"><label>Contato (nome ou telefone)</label><input type="text" id="contContato" placeholder="(00) 00000-0000 ou nome"/></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-secondary" onclick="fecharModalCont()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarContabilidade()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUB-MODAL: Novo Médico -->
+<div class="modal-overlay" id="modalMed">
+  <div class="modal-card" style="max-width:360px">
+    <div class="modal-head"><h3>Cadastrar Médico</h3><button class="modal-x" onclick="fecharModalMed()">×</button></div>
+    <div class="modal-body">
+      <div class="mfield"><label>Nome do Médico *</label><input type="text" id="medNome" placeholder="Dr. Nome Sobrenome"/></div>
+      <div class="mfield"><label>CRM</label><input type="text" id="medCrm" placeholder="CRM/SP 12345"/></div>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button class="btn-secondary" onclick="fecharModalMed()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarNovoMedico()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script src="nav.js"></script>
 <script>
-const TIPO_CORES = {'ASO Admissional':'#16A94A','ASO Periódico':'#2980b9','ASO Demissional':'#e74c3c','ASO Retorno ao Trabalho':'#e67e22','ASO Mudança de Riscos':'#9b59b6','ASO Mudança de Função':'#8e44ad','Consulta Médica':'#1abc9c','Coleta Laboratorial':'#f39c12'};
-const STATUS_CORES = {'Agendado':'#f39c12','Confirmado':'#2980b9','Realizado':'#16A94A','Faltou':'#e74c3c','Reagendado':'#9b59b6','Cancelado':'#7f8c8d'};
+const TIPO_CORES = {
+  'Admissional':'#16A94A','Periódico':'#2980b9','Demissional':'#e74c3c',
+  'Ret. ao Trabalho':'#e67e22','Mud. de Risco':'#9b59b6',
+  // Legado — registros antigos do data.js
+  'ASO Admissional':'#16A94A','ASO Periódico':'#2980b9','ASO Demissional':'#e74c3c',
+  'ASO Retorno ao Trabalho':'#e67e22','ASO Mudança de Riscos':'#9b59b6',
+  'ASO Mudança de Função':'#8e44ad','Consulta Médica':'#1abc9c','Coleta Laboratorial':'#f39c12'
+};
+const STATUS_CORES = {
+  'Agendado':'#f39c12','Confirmado':'#2980b9','Realizado':'#16A94A',
+  'Faltou':'#e74c3c','Reagendado':'#9b59b6','Cancelado':'#7f8c8d'
+};
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!GRO_AUTH.requireLogin()) return;
+  const user = GRO_AUTH.requireLogin();
+  if (!user) return;
+  // ⚙ Horários → apenas admin
+  if (user.role !== 'admin') {
+    const btn = document.getElementById('btnCfgHorarios');
+    if (btn) btn.style.display = 'none';
+  }
   document.getElementById('agendaData').value = new Date().toISOString().split('T')[0];
   if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { try { await GRO_SYNC.inicializar(); } catch {} }
   renderAgenda();
@@ -149,7 +259,6 @@ function irHoje() {
   renderAgenda();
 }
 
-// Agrupa registros do GRO_EXAMES (data.js) por empresa+paciente para uma data
 function getExamesParaData(data) {
   if (typeof GRO_EXAMES === 'undefined') return [];
   const grupos = {};
@@ -167,19 +276,17 @@ function renderAgenda() {
   const dow = d.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
   document.getElementById('agendaDow').textContent = dow.charAt(0).toUpperCase()+dow.slice(1);
 
+  const soDisp = document.getElementById('checkSoDisp')?.checked;
   const slots = GRO_DB.gerarSlots();
 
-  // 1 — Registros salvos (localStorage) — precedência máxima
   const agLocal = GRO_DB.getPorData(data);
   const mapa = {};
   agLocal.forEach(a => mapa[a.hora] = a);
 
-  // 2 — Registros históricos da planilha (data.js) para a mesma data
   const historico = getExamesParaData(data);
   const localKeys = new Set(agLocal.map(a => `${a.empresa}|${a.paciente}`));
   const semSlot = historico.filter(h => !localKeys.has(`${h.empresa}|${h.paciente}`));
 
-  // Distribui registros históricos nos slots livres
   let histIdx = 0;
   slots.forEach(s => {
     if (!mapa[s.hora] && !s.almoco && histIdx < semSlot.length) {
@@ -194,9 +301,10 @@ function renderAgenda() {
 
   slots.forEach(s => {
     const a = mapa[s.hora];
-    const row = document.createElement('div');
 
     if (s.almoco && !a) {
+      if (soDisp) return;
+      const row = document.createElement('div');
       row.className = 'ag-row ag-almoco';
       row.innerHTML = `<span class="ag-hora">${s.hora}</span><span class="ag-almoco-txt">— Intervalo / Almoço —</span>`;
       grid.appendChild(row); return;
@@ -204,10 +312,12 @@ function renderAgenda() {
 
     if (a) {
       ocupadas++;
+      if (soDisp) return; // em modo "só livres", pula vagas ocupadas
       const tc = TIPO_CORES[a.tipo] || '#777';
       const sc = STATUS_CORES[a.status] || '#777';
       const procs = (a.procedimentos||[]).join(', ');
       const isHist = !!a.fromHistorico;
+      const row = document.createElement('div');
       row.className = 'ag-row ag-ocupada' + (isHist ? ' ag-hist-row' : '');
       const pac = (a.paciente||'').replace(/'/g,"\\'");
       const emp = (a.empresa||'').replace(/'/g,"\\'");
@@ -225,15 +335,17 @@ function renderAgenda() {
             ? `<button class="btn-mini btn-mini-add" onclick="confirmarDaPlanilha('${s.hora}','${pac}','${emp}','${a.tipo||''}','${a.status||''}')">+ Confirmar</button>`
             : `<button class="btn-mini" onclick="editarAg('${a.id}')">Editar</button>`
         }</span>`;
+      grid.appendChild(row);
     } else {
+      const row = document.createElement('div');
       row.className = 'ag-row ag-livre';
       row.innerHTML = `
         <span class="ag-hora">${s.hora}</span>
         <span class="ag-vaga">Vaga livre</span>
         <span></span><span></span>
         <span class="ag-acao"><button class="btn-mini btn-mini-add" onclick="novoAg('${s.hora}')">+ Agendar</button></span>`;
+      grid.appendChild(row);
     }
-    grid.appendChild(row);
   });
 
   const totalSlots = slots.filter(s => !s.almoco).length;
@@ -242,7 +354,6 @@ function renderAgenda() {
   document.getElementById('stTotal').textContent  = totalSlots;
 }
 
-// Abre modal pré-preenchido com dados da planilha para o usuário confirmar/salvar
 function confirmarDaPlanilha(hora, paciente, empresa, tipo, status) {
   const data = dataAtual();
   const hist = getExamesParaData(data).find(h => h.paciente === paciente && h.empresa === empresa);
@@ -275,9 +386,27 @@ function preencherSelectsModal() {
   const procs = GRO_DB.getProcedimentos();
   document.getElementById('mProcs').innerHTML = procs.map(p=>`
     <label class="proc-check"><input type="checkbox" value="${p.nome}"> ${p.nome}</label>`).join('');
+  atualizarListaEmpresas();
+  atualizarListaMedicos();
+}
+
+function atualizarListaEmpresas() {
   const dl = document.getElementById('empList');
-  const empresas = [...new Set(GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean))].sort();
+  if (!dl) return;
+  const empresas = [...new Set([
+    ...GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean),
+    ...GRO_DB.getEmpresas()
+  ])].sort();
   dl.innerHTML = empresas.map(e=>`<option value="${e}">`).join('');
+}
+
+function atualizarListaMedicos() {
+  const dl = document.getElementById('medList');
+  if (!dl) return;
+  const saved = JSON.parse(localStorage.getItem('gro_medicos_cad')||'[]');
+  const fromHistory = [...new Set(GRO_DB.getAgendamentos().map(a=>a.medico).filter(Boolean))];
+  const todos = [...new Set([...saved.map(m=>m.nome), ...fromHistory])].sort();
+  dl.innerHTML = todos.map(m=>`<option value="${m}">`).join('');
 }
 
 function novoAg(hora) {
@@ -288,6 +417,7 @@ function novoAg(hora) {
   document.getElementById('mHora').value = hora;
   ['mPaciente','mCpf','mEmpresa','mMedico','mObs'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('mStatus').value = 'Agendado';
+  document.getElementById('pacSugg').style.display = 'none';
   document.getElementById('btnExcluir').style.display = 'none';
   document.getElementById('modalAg').dataset.hora = hora;
   document.getElementById('modalAg').classList.add('show');
@@ -308,6 +438,7 @@ function editarAg(id) {
   document.getElementById('mMedico').value = a.medico||'';
   document.getElementById('mObs').value = a.obs||'';
   document.getElementById('mStatus').value = a.status||'Agendado';
+  document.getElementById('pacSugg').style.display = 'none';
   (a.procedimentos||[]).forEach(p=>{
     const cb = document.querySelector(`#mProcs input[value="${CSS.escape(p)}"]`);
     if (cb) cb.checked = true;
@@ -317,7 +448,10 @@ function editarAg(id) {
   document.getElementById('modalAg').classList.add('show');
 }
 
-function fecharModal(){ document.getElementById('modalAg').classList.remove('show'); }
+function fecharModal() {
+  document.getElementById('modalAg').classList.remove('show');
+  document.getElementById('pacSugg').style.display = 'none';
+}
 
 function salvarAg() {
   const id = document.getElementById('mId').value;
@@ -349,6 +483,116 @@ function excluirAg() {
   GRO_DB.removeAgendamento(id);
   toast('Agendamento excluído.', 'success');
   fecharModal(); renderAgenda();
+}
+
+// ---------- AUTOCOMPLETE PACIENTE ----------
+function buscarPaciente() {
+  const q = (document.getElementById('mPaciente').value || '').trim().toLowerCase();
+  const sugg = document.getElementById('pacSugg');
+  if (q.length < 2) { sugg.style.display='none'; return; }
+  const seen = new Set();
+  const results = [];
+  GRO_DB.getAgendamentos().forEach(a => {
+    if (!a.paciente) return;
+    const key = a.paciente + '|' + (a.cpf||'');
+    if (seen.has(key)) return;
+    if (a.paciente.toLowerCase().includes(q) || (a.cpf||'').includes(q)) {
+      seen.add(key);
+      results.push({ nome: a.paciente, cpf: a.cpf||'' });
+    }
+  });
+  if (!results.length) { sugg.style.display='none'; return; }
+  sugg.innerHTML = results.slice(0,8).map(r => {
+    const ne = r.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const ce = r.cpf.replace(/'/g,"\\'");
+    return `<div class="sugg-item" onclick="selecionarPaciente('${ne}','${ce}')"><strong>${r.nome}</strong>${r.cpf?'<small>CPF: '+r.cpf+'</small>':''}</div>`;
+  }).join('');
+  sugg.style.display = 'block';
+}
+
+function selecionarPaciente(nome, cpf) {
+  document.getElementById('mPaciente').value = nome;
+  document.getElementById('mCpf').value = cpf;
+  document.getElementById('pacSugg').style.display = 'none';
+}
+
+// ---------- NOVA EMPRESA ----------
+function novaEmpresaModal() {
+  ['empNome','empCnpj','empContato','empTel','empEmail'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('modalEmp').classList.add('show');
+}
+function fecharModalEmp() { document.getElementById('modalEmp').classList.remove('show'); }
+function salvarNovaEmpresa() {
+  const nome = document.getElementById('empNome').value.trim();
+  if (!nome) { toast('Informe o nome da empresa.','error'); return; }
+  const obj = {
+    nome,
+    cnpj:    document.getElementById('empCnpj').value.trim(),
+    contato: document.getElementById('empContato').value.trim(),
+    tel:     document.getElementById('empTel').value.trim(),
+    email:   document.getElementById('empEmail').value.trim()
+  };
+  const list = JSON.parse(localStorage.getItem('gro_empresas_full')||'[]');
+  if (!list.some(e=>e.nome.toLowerCase()===nome.toLowerCase())) {
+    list.push(obj); localStorage.setItem('gro_empresas_full', JSON.stringify(list));
+  }
+  GRO_DB.addEmpresa(nome);
+  document.getElementById('mEmpresa').value = nome;
+  atualizarListaEmpresas();
+  fecharModalEmp();
+  toast('Empresa cadastrada!','success');
+}
+
+// ---------- CONTABILIDADE ----------
+function contabilidadeModal() {
+  ['contNome','contCidade','contContato'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('modalCont').classList.add('show');
+}
+function fecharModalCont() { document.getElementById('modalCont').classList.remove('show'); }
+function salvarContabilidade() {
+  const nome = document.getElementById('contNome').value.trim();
+  if (!nome) { toast('Informe o nome da contabilidade.','error'); return; }
+  const obj = {
+    nome,
+    cidade:  document.getElementById('contCidade').value.trim(),
+    contato: document.getElementById('contContato').value.trim(),
+    tipo: 'contabilidade'
+  };
+  const list = JSON.parse(localStorage.getItem('gro_empresas_full')||'[]');
+  if (!list.some(e=>e.nome.toLowerCase()===nome.toLowerCase())) {
+    list.push(obj); localStorage.setItem('gro_empresas_full', JSON.stringify(list));
+  }
+  GRO_DB.addEmpresa(nome);
+  document.getElementById('mEmpresa').value = nome;
+  atualizarListaEmpresas();
+  fecharModalCont();
+  toast('Contabilidade cadastrada!','success');
+}
+
+// ---------- NOVO MÉDICO ----------
+function novoMedicoModal() {
+  ['medNome','medCrm'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('modalMed').classList.add('show');
+}
+function fecharModalMed() { document.getElementById('modalMed').classList.remove('show'); }
+function salvarNovoMedico() {
+  const nome = document.getElementById('medNome').value.trim();
+  if (!nome) { toast('Informe o nome do médico.','error'); return; }
+  const crm = document.getElementById('medCrm').value.trim();
+  const list = JSON.parse(localStorage.getItem('gro_medicos_cad')||'[]');
+  if (!list.some(m=>m.nome.toLowerCase()===nome.toLowerCase())) {
+    list.push({ nome, crm }); localStorage.setItem('gro_medicos_cad', JSON.stringify(list));
+  }
+  document.getElementById('mMedico').value = nome;
+  atualizarListaMedicos();
+  fecharModalMed();
+  toast('Médico cadastrado!','success');
 }
 
 // ---------- CONFIG ----------

@@ -148,13 +148,11 @@
             <label>Tipo de Exame *</label>
             <select id="fTipo" required onchange="atualizarDescricoes()">
               <option value="">Selecione...</option>
-              <option value="ASO Admissional">ASO Admissional</option>
-              <option value="ASO Periódico">ASO Periódico</option>
-              <option value="ASO Demissional">ASO Demissional</option>
-              <option value="ASO Retorno">ASO Retorno ao Trabalho</option>
-              <option value="ASO Mudança de Função">ASO Mudança de Função</option>
-              <option value="Consulta Médica">Consulta Médica</option>
-              <option value="Coleta Laboratorial">Coleta Laboratorial</option>
+              <option value="Admissional">Admissional</option>
+              <option value="Periódico">Periódico</option>
+              <option value="Mud. de Risco">Mud. de Risco</option>
+              <option value="Ret. ao Trabalho">Ret. ao Trabalho</option>
+              <option value="Demissional">Demissional</option>
             </select>
           </div>
           <div class="field">
@@ -253,16 +251,21 @@
 <script>
 // ---- MAPEAMENTO TIPO → PROCEDIMENTOS ----
 const PROC_MAP = {
-  'ASO Admissional':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
-  'ASO Periódico':      ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
-  'ASO Demissional':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum'],
-  'ASO Retorno':        ['Audiometria','Acuidade Visual','Avaliação Clínica'],
-  'ASO Mudança de Função':['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo'],
-  'Consulta Médica':    ['Consulta Clínica Geral','Consulta de Retorno','Avaliação Médica'],
-  'Coleta Laboratorial':['Hemograma Completo','Glicemia em Jejum','Colesterol Total','Triglicerídeos','Ureia e Creatinina','TGO e TGP','HBsAg (Hepatite B)','Anti-HCV','VDRL','TSH'],
+  'Admissional':      ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
+  'Periódico':        ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum','Colesterol Total','Raio-X de Tórax','Eletrocardiograma','Triglicerídeos'],
+  'Demissional':      ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo','Glicemia em Jejum'],
+  'Ret. ao Trabalho': ['Audiometria','Acuidade Visual','Avaliação Clínica'],
+  'Mud. de Risco':    ['Audiometria','Acuidade Visual','Espirometria','Hemograma Completo'],
 };
 
-const TIPO_CORES = {'ASO Admissional':'#1a6e3c','ASO Periódico':'#27ae60','ASO Demissional':'#e74c3c','ASO Retorno':'#e67e22','ASO Mudança de Função':'#9b59b6','Consulta Médica':'#2980b9','Coleta Laboratorial':'#16a085'};
+const TIPO_CORES = {
+  'Admissional':'#1a6e3c','Periódico':'#27ae60','Demissional':'#e74c3c',
+  'Ret. ao Trabalho':'#e67e22','Mud. de Risco':'#9b59b6',
+  // legado (para registros históricos)
+  'ASO Admissional':'#1a6e3c','ASO Periódico':'#27ae60','ASO Demissional':'#e74c3c',
+  'ASO Retorno ao Trabalho':'#e67e22','ASO Mudança de Riscos':'#9b59b6',
+  'ASO Mudança de Função':'#8e44ad','Consulta Médica':'#2980b9','Coleta Laboratorial':'#16a085'
+};
 
 let todosAgendamentos = [];
 
@@ -382,7 +385,7 @@ async function carregarAgendamentos() {
     } catch { /* Usa local */ }
   }
 
-  todosAgendamentos = lista.sort((a,b) => (a.data+a.hora) < (b.data+b.hora) ? 1 : -1);
+  todosAgendamentos = lista.sort((a,b) => (a.data+a.hora) < (b.data+b.hora) ? -1 : 1);
   atualizarContadores();
   renderizarTabela(todosAgendamentos);
 }

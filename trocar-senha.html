@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Precisa estar logado; se não precisar trocar, vai direto ao sistema
   if (!GRO_AUTH.isLoggedIn()) { window.location.href = 'login.html'; return; }
   const u = GRO_AUTH.getUser();
-  if (u && !u.mustChangePassword) { window.location.href = 'index.html'; return; }
+  if (u && !u.mustChangePassword) { window.location.href = 'agenda.html'; return; }
   document.getElementById('desc').textContent =
     `Olá, ${u.name}. Por segurança, crie uma nova senha pessoal antes de continuar.`;
 });
@@ -96,7 +96,7 @@ function trocar(e) {
   if (r.ok) {
     ok.textContent = 'Senha alterada com sucesso! Redirecionando...';
     ok.style.display = 'block';
-    setTimeout(() => window.location.href = 'index.html', 1100);
+    setTimeout(() => window.location.href = 'agenda.html', 1100);
   } else {
     err.textContent = r.msg; err.style.display = 'block';
     btn.textContent = 'Salvar nova senha'; btn.disabled = false;

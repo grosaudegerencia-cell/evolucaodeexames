@@ -1,7 +1,6 @@
 // ============================================================
 //  GOOGLE APPS SCRIPT — Sistema GRO Saúde
-//  Backend da planilha: grava agendamentos do site, serve os
-//  dados e ENVIA RELATÓRIO DIÁRIO por e-mail toda tarde.
+//  Backend da planilha: grava agendamentos do site e serve os dados.
 //
 //  ░░ COMO INSTALAR (uma única vez) ░░
 //  1. Abra a planilha "Sistema GRO Saúde — Agendamentos"
@@ -9,8 +8,8 @@
 //  3. Apague o conteúdo e cole TODO este arquivo
 //  4. Salve (ícone de disquete)
 //  5. No seletor de função, escolha  instalarSistema  e clique em ▶ Executar
-//     -> Autorize as permissões quando solicitado (planilha + e-mail)
-//     Isso cria as abas e agenda o e-mail diário automaticamente.
+//     -> Autorize as permissões quando solicitado
+//     Isso cria as abas e agenda a sincronização diária da base histórica.
 //  6. Clique em  Implantar > Nova implantação > tipo "App da Web"
 //       - Executar como: Eu
 //       - Quem pode acessar: Qualquer pessoa
@@ -23,9 +22,6 @@
 //  ou pela URL:  SHEETS_URL?action=importarBase
 // ============================================================
 
-var EMAIL_RELATORIO = 'e-protecao@hotmail.com';
-var HORA_ENVIO      = 17;          // 17h30 = fim de tarde
-var MINUTO_ENVIO    = 30;
 var ABA_AG          = 'Agendamentos';
 var TZ              = 'America/Sao_Paulo';
 
@@ -55,12 +51,10 @@ function instalarSistema() {
   ensureSheet(TAB_CFG,  HEAD_CFG);
   ensureSheet(TAB_BASE, HEAD_BASE);
   embelezarPlanilha();      // formata bonito
-  instalarGatilhoDiario();  // agenda o e-mail diário
   instalarSyncBaseDiario(); // agenda a sincronização da base histórica
   try { importarBaseDoSite(); } catch(e) {}   // já popula a base na instalação
   SpreadsheetApp.getActiveSpreadsheet().toast(
-    'Sistema instalado! Abas criadas + relatório diário às ' + HORA_ENVIO + 'h' + MINUTO_ENVIO +
-    ' + base histórica sincronizada do site.',
+    'Sistema instalado! Abas criadas + base histórica sincronizada do site.',
     'GRO Saúde', 8);
 }
 
@@ -111,15 +105,6 @@ function ensureSheet(nome, head) {
   return aba;
 }
 
-function instalarGatilhoDiario() {
-  // remove gatilhos antigos do relatório
-  ScriptApp.getProjectTriggers().forEach(function(t){
-    if (t.getHandlerFunction() === 'enviarRelatorioDiario') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('enviarRelatorioDiario')
-    .timeBased().everyDays(1).atHour(HORA_ENVIO).nearMinute(MINUTO_ENVIO).inTimezone(TZ).create();
-}
-
 // ---------- WEB APP (site <-> planilha) ----------
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) || 'list';
@@ -128,7 +113,6 @@ function doGet(e) {
     if (action === 'getAll')     out = getAll();
     else if (action === 'list')  out = { success:true, data: listar() };
     else if (action === 'stats') out = getEstatisticas();
-    else if (action === 'enviarAgora') { enviarRelatorioDiario(); out = { success:true, msg:'Relatório enviado' }; }
     else if (action === 'importarBase') out = importarBaseDoSite();
     else out = { error:'ação desconhecida' };
   } catch(err) { out = { error:String(err) }; }
@@ -336,81 +320,6 @@ function enviarCodigoRecuperacao(d) {
   '</div>';
   MailApp.sendEmail({ to:d.to, subject:'GRO Saúde — Código de recuperação de senha: '+code, htmlBody:html });
   return { success:true };
-}
-
-// ---------- RELATÓRIO DIÁRIO POR E-MAIL ----------
-function enviarRelatorioDiario() {
-  var hoje = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  var todos = listar();
-  var doDia = todos.filter(function(r){ return r.data === hoje; });
-
-  var porStatus = {}, porTipo = {}, totProc = 0;
-  doDia.forEach(function(r){
-    porStatus[r.status] = (porStatus[r.status]||0)+1;
-    porTipo[r.tipo] = (porTipo[r.tipo]||0)+1;
-    totProc += (r.procedimentos||[]).length;
-  });
-
-  var dataBR = Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy');
-  var realizados = porStatus['Realizado']||0;
-  var agendados  = (porStatus['Agendado']||0)+(porStatus['Confirmado']||0);
-  var faltas     = porStatus['Faltou']||0;
-
-  var linhas = doDia.sort(function(a,b){return a.hora<b.hora?-1:1;}).map(function(r){
-    return '<tr>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.hora+'</td>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.paciente+'</td>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.empresa+'</td>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.tipo+'</td>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+(r.procedimentos||[]).join(', ')+'</td>'+
-      '<td style="padding:6px 10px;border-bottom:1px solid #e3efe8">'+r.status+'</td></tr>';
-  }).join('');
-
-  var tipoLinhas = Object.keys(porTipo).map(function(k){
-    return '<li>'+k+': <b>'+porTipo[k]+'</b></li>';
-  }).join('');
-
-  var html =
-  '<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#1B392A">'+
-    '<div style="background:linear-gradient(135deg,#1B392A,#16A94A);color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">'+
-      '<h2 style="margin:0">GRO Saúde — Relatório do Dia</h2>'+
-      '<p style="margin:4px 0 0;opacity:.85">'+dataBR+' · Gestão de Segurança e Medicina Ocupacional</p>'+
-    '</div>'+
-    '<div style="border:1px solid #e3efe8;border-top:none;padding:24px;border-radius:0 0 12px 12px">'+
-      '<table style="width:100%;border-collapse:collapse;margin-bottom:18px"><tr>'+
-        card('Atendimentos', doDia.length, '#16A94A')+
-        card('Realizados', realizados, '#2980b9')+
-        card('Agendados', agendados, '#f39c12')+
-        card('Faltas', faltas, '#e74c3c')+
-      '</tr></table>'+
-      '<p style="margin:0 0 6px"><b>Total de exames/procedimentos no dia:</b> '+totProc+'</p>'+
-      '<p style="margin:14px 0 6px"><b>Por tipo de exame:</b></p><ul style="margin:0 0 16px">'+(tipoLinhas||'<li>—</li>')+'</ul>'+
-      '<h3 style="margin:18px 0 8px;color:#1a6e3c">Detalhamento</h3>'+
-      (doDia.length ?
-      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
-        '<tr style="background:#1B392A;color:#fff;text-align:left">'+
-          '<th style="padding:8px 10px">Hora</th><th style="padding:8px 10px">Paciente</th>'+
-          '<th style="padding:8px 10px">Empresa</th><th style="padding:8px 10px">Tipo</th>'+
-          '<th style="padding:8px 10px">Procedimentos</th><th style="padding:8px 10px">Status</th></tr>'+
-        linhas+'</table>'
-      : '<p style="color:#7f9e8a;font-style:italic">Nenhum atendimento registrado para hoje.</p>')+
-      '<p style="margin-top:22px;font-size:12px;color:#9db3a4">E-mail automático do Sistema GRO Saúde · enviado às '+HORA_ENVIO+'h'+MINUTO_ENVIO+'.</p>'+
-    '</div>'+
-  '</div>';
-
-  MailApp.sendEmail({
-    to: EMAIL_RELATORIO,
-    subject: 'GRO Saúde — Relatório do dia '+dataBR+' ('+doDia.length+' atendimentos)',
-    htmlBody: html
-  });
-}
-
-function card(label, valor, cor) {
-  return '<td style="width:25%;text-align:center;padding:6px">'+
-    '<div style="border:1px solid #e3efe8;border-top:3px solid '+cor+';border-radius:8px;padding:12px 6px">'+
-      '<div style="font-size:26px;font-weight:800;color:'+cor+'">'+valor+'</div>'+
-      '<div style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#7f9e8a">'+label+'</div>'+
-    '</div></td>';
 }
 
 // ---------- ESTATÍSTICAS ----------

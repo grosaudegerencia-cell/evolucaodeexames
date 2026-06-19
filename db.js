@@ -32,8 +32,7 @@ const GRO_DB = {
     { nome:'Avaliação Psicossocial', categoria:'Clínico' },
   ],
   TIPOS_DEFAULT: [
-    'ASO Admissional','ASO Periódico','ASO Demissional','ASO Retorno ao Trabalho',
-    'ASO Mudança de Riscos','ASO Mudança de Função','Consulta Médica','Coleta Laboratorial',
+    'Admissional','Periódico','Mud. de Risco','Ret. ao Trabalho','Demissional',
   ],
 
   getProcedimentos() {
@@ -187,6 +186,23 @@ const GRO_DB = {
     return { ocupadas: ags.length, livres: Math.max(slots - ags.length, 0), total: slots };
   }
 };
+
+// ============================================================
+//  Migração dos tipos de exame → 5 tipos simplificados (sem prefixo "ASO")
+// ============================================================
+(function migrarTipos() {
+  try {
+    const KEY = 'gro_tipos_version';
+    const VER = '1';
+    if (localStorage.getItem(KEY) === VER) return;
+    const novos = ['Admissional','Periódico','Mud. de Risco','Ret. ao Trabalho','Demissional'];
+    localStorage.setItem(GRO_DB.TIPOS_KEY, JSON.stringify(novos));
+    if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) {
+      novos.forEach(nome => { try { GRO_SYNC.enviar('saveTipo', { nome }); } catch {} });
+    }
+    localStorage.setItem(KEY, VER);
+  } catch(e) {}
+})();
 
 // ============================================================
 //  Migração da configuração da agenda (intervalo 5 min, sem almoço)

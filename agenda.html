@@ -46,7 +46,7 @@
       <span class="agenda-dow" id="agendaDow"></span>
     </div>
     <div class="agenda-stats">
-      <button class="btn-pdf" onclick="exportarDiaPDF()" title="Exportar atendimentos do dia em PDF">🖨 Exportar dia (PDF)</button>
+      <button class="btn-pdf" onclick="exportarDiaPDF()" title="Exportar atendimentos laboratoriais do dia em PDF">🖨 Exportar laboratoriais (PDF)</button>
       <span class="ag-chip ag-chip-livre">Livres: <strong id="stLivres">—</strong></span>
       <span class="ag-chip ag-chip-ocup">Ocupadas: <strong id="stOcup">—</strong></span>
       <span class="ag-chip ag-chip-total">Total de vagas: <strong id="stTotal">—</strong></span>
@@ -944,6 +944,15 @@ function salvarConfig() {
 function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function formatarDataBR(iso){ if(!iso) return ''; const p=String(iso).split('-'); return p.length===3 ? `${p[2]}/${p[1]}/${p[0]}` : iso; }
 
+// Conjunto de nomes de exames marcados como Laboratorial nos cadastros
+function nomesLaboratoriais() {
+  return new Set(
+    GRO_DB.getProcedimentos()
+      .filter(p => (p.complemento||'') === 'Laboratorial')
+      .map(p => (p.nome||'').toLowerCase())
+  );
+}
+
 function coletarAtendimentosDia(data) {
   const pacientes = JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]');
   const byCpf = {}, byNome = {};
@@ -952,15 +961,21 @@ function coletarAtendimentosDia(data) {
     const p = (cpf && byCpf[cpf]) || (nome && byNome[(nome||'').toLowerCase()]);
     return (p && p.nasc) ? formatarDataBR(p.nasc) : '';
   };
+  const labSet = nomesLaboratoriais();
+  const soLab = (procs) => (procs||[]).filter(x => labSet.has((x||'').toLowerCase()));
   const res = [];
   GRO_DB.getPorData(data).forEach(a => {
     if (a.status === 'Cancelado') return;
-    res.push({ hora:a.hora||'', nome:a.paciente||'', cpf:a.cpf||'', nasc:nascDe(a.paciente,a.cpf), exames:(a.procedimentos||[]).join(', ') });
+    const lab = soLab(a.procedimentos);
+    if (!lab.length) return; // só constam atendimentos com exame laboratorial
+    res.push({ hora:a.hora||'', nome:a.paciente||'', cpf:a.cpf||'', nasc:nascDe(a.paciente,a.cpf), exames:lab.join(', ') });
   });
   const localKeys = new Set(GRO_DB.getPorData(data).map(a=>`${a.empresa}|${a.paciente}`));
   getExamesParaData(data).forEach(h => {
     if (localKeys.has(`${h.empresa}|${h.paciente}`)) return;
-    res.push({ hora:'', nome:h.paciente||'', cpf:'', nasc:nascDe(h.paciente,''), exames:(h.procs||[]).join(', ') });
+    const lab = soLab(h.procs);
+    if (!lab.length) return;
+    res.push({ hora:'', nome:h.paciente||'', cpf:'', nasc:nascDe(h.paciente,''), exames:lab.join(', ') });
   });
   res.sort((a,b)=>(a.hora||'~').localeCompare(b.hora||'~'));
   return res;
@@ -981,7 +996,7 @@ function exportarDiaPDF() {
       <td>${it.nasc||'—'}</td>
       <td>${escapeHtml(it.exames)||'—'}</td>
     </tr>`).join('') : `<tr><td colspan="6" class="vazio">Nenhum atendimento para este dia.</td></tr>`;
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Atendimentos ${data}</title>
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Atendimentos laboratoriais ${data}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,Helvetica,sans-serif;color:#1B392A;padding:28px}
@@ -1006,10 +1021,10 @@ function exportarDiaPDF() {
       <img src="${logoUrl}" alt="GRO Saúde" onerror="this.style.display='none'"/>
       <div><div class="marca">GRO Saúde</div><div class="sub">Gestão de Segurança e Medicina Ocupacional</div></div>
     </div>
-    <div class="tit">Atendimentos do dia</div>
+    <div class="tit">Atendimentos laboratoriais do dia</div>
     <div class="dia">${dataCap} &nbsp;·&nbsp; Total de atendimentos: ${itens.length}</div>
     <table>
-      <thead><tr><th>#</th><th>Horário</th><th>Nome do Funcionário</th><th>CPF</th><th>Data de Nascimento</th><th>Exames Realizados</th></tr></thead>
+      <thead><tr><th>#</th><th>Horário</th><th>Nome do Funcionário</th><th>CPF</th><th>Data de Nascimento</th><th>Exames Laboratoriais</th></tr></thead>
       <tbody>${linhas}</tbody>
     </table>
     <div class="rod">Documento gerado em ${new Date().toLocaleString('pt-BR')} — GRO Saúde</div>

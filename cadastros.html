@@ -13,6 +13,14 @@
 <script src="db.js"></script>
 <link rel="stylesheet" href="style.css"/>
 <link rel="stylesheet" href="sistema.css"/>
+<style>
+.cad-item-acoes{display:flex;gap:.35rem;align-items:center}
+.btn-edit-sm{width:24px;height:24px;border:1.5px solid #93c5fd;background:#fff;color:#1d4ed8;border-radius:6px;font-size:.78rem;line-height:1;cursor:pointer}
+.btn-edit-sm:hover{background:#eff6ff}
+.cad-item.editando{border-color:#93c5fd;background:#eff6ff}
+.cad-comp{font-size:.66rem;font-weight:700;padding:.15rem .5rem;border-radius:20px;background:#eef2ff;color:#4338ca}
+.btn-secondary{height:38px;padding:0 1rem;background:#fff;border:1.5px solid var(--border);border-radius:8px;color:var(--text-muted);font-size:.82rem;font-weight:600;cursor:pointer;font-family:inherit}
+</style>
 </head>
 <body class="sys-body">
 
@@ -36,7 +44,15 @@
               <option>Imagem/Funcional</option><option>Toxicológico</option><option>Outros</option>
             </select>
           </div>
-          <button type="submit" class="btn-primary">+ Adicionar</button>
+          <div class="mfield"><label>Complemento</label>
+            <select id="pComp">
+              <option value="Ocupacional">Ocupacional</option>
+              <option value="Laboratorial">Laboratorial</option>
+              <option value="Toxicológico">Toxicológico</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-primary" id="pBtn">+ Adicionar</button>
+          <button type="button" class="btn-secondary" id="pCancel" onclick="cancelProc()" style="display:none">Cancelar</button>
         </form>
         <div class="cad-count" id="procCount"></div>
         <div class="cad-list" id="procList"></div>
@@ -75,25 +91,62 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderProcs(); renderTipos();
 });
 
+let editProcNome = null;
 function addProc(e) {
   e.preventDefault();
-  const r = GRO_DB.addProcedimento(document.getElementById('pNome').value, document.getElementById('pCat').value);
-  if (r.ok) { document.getElementById('pNome').value=''; renderProcs(); toast('Exame cadastrado!', 'success'); }
-  else toast(r.msg, 'error');
+  const nome = document.getElementById('pNome').value;
+  const cat  = document.getElementById('pCat').value;
+  const comp = document.getElementById('pComp').value;
+  let r;
+  if (editProcNome !== null) {
+    r = GRO_DB.updateProcedimento(editProcNome, { nome, categoria:cat, complemento:comp });
+    if (r.ok) { cancelProc(); renderProcs(); toast('Exame atualizado!', 'success'); }
+    else toast(r.msg, 'error');
+  } else {
+    r = GRO_DB.addProcedimento(nome, cat, comp);
+    if (r.ok) { cancelProc(); renderProcs(); toast('Exame cadastrado!', 'success'); }
+    else toast(r.msg, 'error');
+  }
+}
+function editProc(nome) {
+  const p = GRO_DB.getProcedimentos().find(x=>x.nome===nome);
+  if (!p) return;
+  document.getElementById('pNome').value = p.nome;
+  document.getElementById('pCat').value  = p.categoria || 'Outros';
+  document.getElementById('pComp').value = p.complemento || 'Ocupacional';
+  editProcNome = nome;
+  document.getElementById('pBtn').textContent = 'Salvar';
+  document.getElementById('pCancel').style.display = '';
+  document.getElementById('pNome').focus();
+  renderProcs();
+}
+function cancelProc() {
+  editProcNome = null;
+  document.getElementById('pNome').value = '';
+  document.getElementById('pBtn').textContent = '+ Adicionar';
+  document.getElementById('pCancel').style.display = 'none';
+  renderProcs();
 }
 function delProc(nome) {
   if (!confirm(`Remover o exame "${nome}"?`)) return;
-  GRO_DB.removeProcedimento(nome); renderProcs(); toast('Exame removido.', 'success');
+  GRO_DB.removeProcedimento(nome);
+  if (editProcNome===nome) cancelProc();
+  renderProcs(); toast('Exame removido.', 'success');
 }
 function renderProcs() {
   const list = GRO_DB.getProcedimentos();
   document.getElementById('procCount').textContent = `${list.length} exame(s) cadastrado(s)`;
   document.getElementById('procList').innerHTML = list.map(p=>{
     const c = CAT_COR[p.categoria]||'#7f8c8d';
-    return `<div class="cad-item">
+    const esc = (p.nome||'').replace(/'/g,"\\'");
+    return `<div class="cad-item${editProcNome===p.nome?' editando':''}">
       <span class="cad-item-name">${p.nome}</span>
+      ${p.complemento?`<span class="cad-comp">${p.complemento}</span>`:''}
       <span class="cad-cat" style="background:${c}1a;color:${c}">${p.categoria}</span>
-      <button class="btn-del-sm" onclick="delProc('${p.nome.replace(/'/g,"\\'")}')">×</button>
+      <span class="cad-item-acoes">
+        <button class="btn-edit-sm" onclick="editProc('${esc}')" title="Editar">✎</button>
+        <button class="btn-del-sm" onclick="delProc('${esc}')" title="Excluir">×</button>
+      </span>
     </div>`;
   }).join('');
 }

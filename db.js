@@ -44,17 +44,34 @@ const GRO_DB = {
     return [...this.PROC_DEFAULT];
   },
   saveProcedimentos(list) { localStorage.setItem(this.PROC_KEY, JSON.stringify(list)); },
-  addProcedimento(nome, categoria) {
+  addProcedimento(nome, categoria, complemento) {
     nome = (nome||'').trim();
     if (!nome) return { ok:false, msg:'Informe o nome do exame.' };
     const list = this.getProcedimentos();
     if (list.some(p => p.nome.toLowerCase() === nome.toLowerCase()))
       return { ok:false, msg:'Esse exame já está cadastrado.' };
-    const novo = { nome, categoria: categoria||'Outros' };
+    const novo = { nome, categoria: categoria||'Outros', complemento: complemento||'' };
     list.push(novo);
     list.sort((a,b)=>a.nome.localeCompare(b.nome));
     this.saveProcedimentos(list);
     this._syncSheets('saveProcedimento', novo);
+    return { ok:true };
+  },
+  updateProcedimento(nomeOriginal, dados) {
+    const list = this.getProcedimentos();
+    const idx = list.findIndex(p => p.nome === nomeOriginal);
+    if (idx < 0) return { ok:false, msg:'Exame não encontrado.' };
+    const novoNome = (dados.nome||'').trim();
+    if (!novoNome) return { ok:false, msg:'Informe o nome do exame.' };
+    if (novoNome.toLowerCase() !== nomeOriginal.toLowerCase() &&
+        list.some(p => p.nome.toLowerCase() === novoNome.toLowerCase()))
+      return { ok:false, msg:'Esse exame já está cadastrado.' };
+    const atualizado = { nome: novoNome, categoria: dados.categoria||'Outros', complemento: dados.complemento||'' };
+    list[idx] = atualizado;
+    list.sort((a,b)=>a.nome.localeCompare(b.nome));
+    this.saveProcedimentos(list);
+    if (novoNome !== nomeOriginal) this._syncSheets('deleteProcedimento', { nome: nomeOriginal });
+    this._syncSheets('saveProcedimento', atualizado);
     return { ok:true };
   },
   removeProcedimento(nome) {

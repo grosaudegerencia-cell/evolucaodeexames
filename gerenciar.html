@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cadastros Gerais — Sistema GRO Saúde</title>
+<link rel="icon" type="image/png" href="logo.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="config.js"></script>
+<script src="auth.js"></script>
+<script src="sync.js"></script>
+<script src="db.js"></script>
+<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="sistema.css"/>
+<style>
+.cad-form .mfield{min-width:120px}
+.cad-item-name small{display:block;font-weight:500;color:var(--text-muted);font-size:.72rem;margin-top:.1rem}
+.cad-cat.cad-doc{background:#eef6ff;color:#1d4ed8}
+</style>
+</head>
+<body class="sys-body">
+
+<div id="gro-header" data-page="gerenciar"></div>
+
+<main class="sys-main">
+  <div class="cad-grid">
+
+    <!-- MÉDICOS -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span>Médicos</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addMedico(event)" class="cad-form">
+          <div class="mfield grow"><label>Nome do médico *</label><input type="text" id="medNome" placeholder="Dr. Nome Sobrenome" required/></div>
+          <div class="mfield"><label>CRM</label><input type="text" id="medCrm" placeholder="CRM/SP 12345"/></div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="medCount"></div>
+        <div class="cad-list" id="medList"></div>
+      </div>
+    </div>
+
+    <!-- EMPRESAS -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m4-12h.01M11 9h.01M15 9h.01M7 13h.01M11 13h.01M15 13h.01"/></svg>
+        <span>Empresas</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addEmpresa(event)" class="cad-form">
+          <div class="mfield grow"><label>Empresa *</label><input type="text" id="empNome" placeholder="Razão social / nome fantasia" required/></div>
+          <div class="mfield"><label>CNPJ</label><input type="text" id="empCnpj" placeholder="00.000.000/0001-00"/></div>
+          <div class="mfield"><label>Contato</label><input type="text" id="empContato" placeholder="Responsável / telefone"/></div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="empCount"></div>
+        <div class="cad-list" id="empListBox"></div>
+      </div>
+    </div>
+
+    <!-- CONTABILIDADE -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+        <span>Contabilidade</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addCont(event)" class="cad-form">
+          <div class="mfield grow"><label>Contabilidade *</label><input type="text" id="contNome" placeholder="Ex: XYZ Contabilidade Ltda" required/></div>
+          <div class="mfield"><label>Cidade</label><input type="text" id="contCidade" placeholder="Cidade"/></div>
+          <div class="mfield"><label>Contato</label><input type="text" id="contContato" placeholder="Nome / telefone"/></div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="contCount"></div>
+        <div class="cad-list" id="contList"></div>
+      </div>
+    </div>
+
+    <!-- FUNCIONÁRIOS / PACIENTES -->
+    <div class="cad-card">
+      <div class="cad-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 00-3-3.87"/></svg>
+        <span>Funcionários / Pacientes</span>
+      </div>
+      <div class="cad-body">
+        <form onsubmit="addPac(event)" class="cad-form">
+          <div class="mfield grow"><label>Nome *</label><input type="text" id="pacNome" placeholder="Nome completo" required/></div>
+          <div class="mfield"><label>CPF</label><input type="text" id="pacCpf" placeholder="000.000.000-00"/></div>
+          <div class="mfield"><label>Empresa</label><input type="text" id="pacEmpresa" list="empDatalist" placeholder="Empresa"/><datalist id="empDatalist"></datalist></div>
+          <button type="submit" class="btn-primary">+ Adicionar</button>
+        </form>
+        <div class="cad-count" id="pacCount"></div>
+        <div class="cad-list" id="pacList"></div>
+      </div>
+    </div>
+
+  </div>
+  <p class="cad-note">Os médicos, empresas, contabilidades e funcionários cadastrados aqui ficam disponíveis automaticamente ao agendar uma vaga na <a href="agenda.html">Agenda</a>.</p>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script src="nav.js"></script>
+<script>
+const KEY_MED = 'gro_medicos_cad';
+const KEY_EMP = 'gro_empresas_full';
+const KEY_PAC = 'gro_pacientes_cad';
+
+const Store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } },
+  set(k,v){ localStorage.setItem(k, JSON.stringify(v)); },
+};
+const esc = s => (s||'').replace(/'/g,"\\'");
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!GRO_AUTH.requireAdmin()) return;
+  if (typeof GRO_SYNC !== 'undefined' && GRO_SYNC.ativo()) { try { await GRO_SYNC.inicializar(); } catch {} }
+  renderTudo();
+});
+
+function renderTudo(){ renderMed(); renderEmp(); renderCont(); renderPac(); atualizarDatalistEmp(); }
+
+// ---------- MÉDICOS ----------
+function addMedico(e){
+  e.preventDefault();
+  const nome = document.getElementById('medNome').value.trim();
+  if (!nome) return;
+  const crm = document.getElementById('medCrm').value.trim();
+  const list = Store.get(KEY_MED);
+  if (list.some(m=>m.nome.toLowerCase()===nome.toLowerCase())) { toast('Esse médico já está cadastrado.','error'); return; }
+  list.push({ nome, crm }); Store.set(KEY_MED, list);
+  document.getElementById('medNome').value=''; document.getElementById('medCrm').value='';
+  renderMed(); toast('Médico cadastrado!','success');
+}
+function delMedico(nome){
+  if (!confirm(`Remover o médico "${nome}"?`)) return;
+  Store.set(KEY_MED, Store.get(KEY_MED).filter(m=>m.nome!==nome));
+  renderMed(); toast('Médico removido.','success');
+}
+function renderMed(){
+  const list = Store.get(KEY_MED);
+  document.getElementById('medCount').textContent = `${list.length} médico(s) cadastrado(s)`;
+  document.getElementById('medList').innerHTML = list.map(m=>`
+    <div class="cad-item">
+      <span class="cad-item-name">${m.nome}${m.crm?`<small>${m.crm}</small>`:''}</span>
+      <button class="btn-del-sm" onclick="delMedico('${esc(m.nome)}')">×</button>
+    </div>`).join('');
+}
+
+// ---------- EMPRESAS (gro_empresas_full sem tipo contabilidade) ----------
+function addEmpresa(e){
+  e.preventDefault();
+  const nome = document.getElementById('empNome').value.trim();
+  if (!nome) return;
+  const list = Store.get(KEY_EMP);
+  if (list.some(x=>x.tipo!=='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase())) { toast('Essa empresa já está cadastrada.','error'); return; }
+  list.push({ nome, cnpj:document.getElementById('empCnpj').value.trim(), contato:document.getElementById('empContato').value.trim() });
+  Store.set(KEY_EMP, list);
+  GRO_DB.addEmpresa(nome);
+  ['empNome','empCnpj','empContato'].forEach(id=>document.getElementById(id).value='');
+  renderEmp(); atualizarDatalistEmp(); toast('Empresa cadastrada!','success');
+}
+function delEmpresa(nome){
+  if (!confirm(`Remover a empresa "${nome}"?`)) return;
+  Store.set(KEY_EMP, Store.get(KEY_EMP).filter(x=>!(x.tipo!=='contabilidade' && x.nome===nome)));
+  GRO_DB.removeEmpresa(nome);
+  renderEmp(); atualizarDatalistEmp(); toast('Empresa removida.','success');
+}
+function renderEmp(){
+  const list = Store.get(KEY_EMP).filter(x=>x.tipo!=='contabilidade');
+  document.getElementById('empCount').textContent = `${list.length} empresa(s) cadastrada(s)`;
+  document.getElementById('empListBox').innerHTML = list.map(x=>{
+    const sub = [x.cnpj, x.contato].filter(Boolean).join(' · ');
+    return `<div class="cad-item">
+      <span class="cad-item-name">${x.nome}${sub?`<small>${sub}</small>`:''}</span>
+      <button class="btn-del-sm" onclick="delEmpresa('${esc(x.nome)}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ---------- CONTABILIDADE (gro_empresas_full com tipo contabilidade) ----------
+function addCont(e){
+  e.preventDefault();
+  const nome = document.getElementById('contNome').value.trim();
+  if (!nome) return;
+  const list = Store.get(KEY_EMP);
+  if (list.some(x=>x.tipo==='contabilidade' && x.nome.toLowerCase()===nome.toLowerCase())) { toast('Essa contabilidade já está cadastrada.','error'); return; }
+  list.push({ nome, cidade:document.getElementById('contCidade').value.trim(), contato:document.getElementById('contContato').value.trim(), tipo:'contabilidade' });
+  Store.set(KEY_EMP, list);
+  ['contNome','contCidade','contContato'].forEach(id=>document.getElementById(id).value='');
+  renderCont(); toast('Contabilidade cadastrada!','success');
+}
+function delCont(nome){
+  if (!confirm(`Remover a contabilidade "${nome}"?`)) return;
+  Store.set(KEY_EMP, Store.get(KEY_EMP).filter(x=>!(x.tipo==='contabilidade' && x.nome===nome)));
+  renderCont(); toast('Contabilidade removida.','success');
+}
+function renderCont(){
+  const list = Store.get(KEY_EMP).filter(x=>x.tipo==='contabilidade');
+  document.getElementById('contCount').textContent = `${list.length} contabilidade(s) cadastrada(s)`;
+  document.getElementById('contList').innerHTML = list.map(x=>{
+    const sub = [x.cidade, x.contato].filter(Boolean).join(' · ');
+    return `<div class="cad-item">
+      <span class="cad-item-name">${x.nome}${sub?`<small>${sub}</small>`:''}</span>
+      <button class="btn-del-sm" onclick="delCont('${esc(x.nome)}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+// ---------- FUNCIONÁRIOS / PACIENTES ----------
+function addPac(e){
+  e.preventDefault();
+  const nome = document.getElementById('pacNome').value.trim();
+  if (!nome) return;
+  const cpf = document.getElementById('pacCpf').value.trim();
+  const list = Store.get(KEY_PAC);
+  if (list.some(p=>p.nome.toLowerCase()===nome.toLowerCase() && (p.cpf||'')===cpf)) { toast('Esse funcionário já está cadastrado.','error'); return; }
+  list.push({ nome, cpf, empresa:document.getElementById('pacEmpresa').value.trim() });
+  Store.set(KEY_PAC, list);
+  ['pacNome','pacCpf','pacEmpresa'].forEach(id=>document.getElementById(id).value='');
+  renderPac(); toast('Funcionário cadastrado!','success');
+}
+function delPac(nome, cpf){
+  if (!confirm(`Remover o funcionário "${nome}"?`)) return;
+  Store.set(KEY_PAC, Store.get(KEY_PAC).filter(p=>!(p.nome===nome && (p.cpf||'')===cpf)));
+  renderPac(); toast('Funcionário removido.','success');
+}
+function renderPac(){
+  const list = Store.get(KEY_PAC);
+  document.getElementById('pacCount').textContent = `${list.length} funcionário(s) cadastrado(s)`;
+  document.getElementById('pacList').innerHTML = list.map(p=>{
+    const sub = [p.cpf, p.empresa].filter(Boolean).join(' · ');
+    return `<div class="cad-item">
+      <span class="cad-item-name">${p.nome}${sub?`<small>${sub}</small>`:''}</span>
+      <button class="btn-del-sm" onclick="delPac('${esc(p.nome)}','${esc(p.cpf)}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+function atualizarDatalistEmp(){
+  const dl = document.getElementById('empDatalist');
+  if (!dl) return;
+  const nomes = [...new Set([
+    ...Store.get(KEY_EMP).filter(x=>x.tipo!=='contabilidade').map(x=>x.nome),
+    ...GRO_DB.getEmpresas()
+  ])].sort();
+  dl.innerHTML = nomes.map(n=>`<option value="${n}">`).join('');
+}
+
+function toast(msg, tipo){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${tipo} show`;
+  setTimeout(()=>t.className=`toast ${tipo}`, 3000);
+}
+</script>
+</body>
+</html>

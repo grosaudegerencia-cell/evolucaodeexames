@@ -114,6 +114,11 @@ const GRO_DB = {
     localStorage.setItem(this.EMP_KEY, JSON.stringify(list));
     this._syncSheets('saveEmpresa', { nome });
   },
+  removeEmpresa(nome) {
+    const list = this.getEmpresas().filter(e => e.toLowerCase() !== (nome||'').toLowerCase());
+    localStorage.setItem(this.EMP_KEY, JSON.stringify(list));
+    this._syncSheets('deleteEmpresa', { nome });
+  },
 
   // Gera os horários (slots) de um dia conforme config
   gerarSlots() {

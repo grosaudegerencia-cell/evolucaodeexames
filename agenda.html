@@ -32,6 +32,7 @@
 .btn-pdf:hover{background:#eafaf1}
 .btn-tag{display:inline-flex;align-items:center;gap:.35rem;background:#fff;color:#1d4ed8;border:1.5px solid #93c5fd;border-radius:8px;padding:.34rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 .btn-tag:hover{background:#eff6ff}
+input.busca-lupa{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233AB86A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:.6rem center;background-size:14px;padding-left:1.95rem!important}
 </style>
 </head>
 <body class="sys-body">
@@ -98,14 +99,14 @@
           <label>Paciente / Colaborador *</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
             <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
-              <input type="text" id="mPaciente" placeholder="Buscar por nome..." oninput="buscarPaciente()" autocomplete="off" style="width:100%"/>
+              <input type="text" id="mPaciente" class="busca-lupa" placeholder="Buscar por nome..." oninput="buscarPaciente()" autocomplete="off" style="width:100%"/>
               <div id="pacSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novoPacienteModal()" title="Cadastrar novo paciente">+ Novo</button>
           </div>
         </div>
         <div class="mfield mfield-rel"><label>CPF</label>
-          <input type="text" id="mCpf" placeholder="Buscar por CPF..." oninput="buscarPorCpf()" autocomplete="off"/>
+          <input type="text" id="mCpf" class="busca-lupa" placeholder="Buscar por CPF..." oninput="buscarPorCpf()" autocomplete="off"/>
           <div id="cpfSugg" class="sugg-list" style="display:none"></div>
         </div>
       </div>
@@ -116,7 +117,7 @@
           <label>Empresa *</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
             <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
-              <input type="text" id="mEmpresa" placeholder="Buscar por nome, CNPJ, CEI ou CPF..." autocomplete="off" style="width:100%" onfocus="buscarEmpresa()" oninput="buscarEmpresa()"/>
+              <input type="text" id="mEmpresa" class="busca-lupa" placeholder="Buscar por nome, CNPJ, CEI ou CPF..." autocomplete="off" style="width:100%" onfocus="buscarEmpresa()" oninput="buscarEmpresa()"/>
               <div id="empSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novaEmpresaModal()" title="Cadastrar nova empresa">+ Nova</button>
@@ -132,7 +133,7 @@
           <label>Contabilidade</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
             <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
-              <input type="text" id="mContabilidade" placeholder="Localizar contabilidade por nome..." autocomplete="off" style="width:100%" onfocus="buscarContabilidade()" oninput="buscarContabilidade()"/>
+              <input type="text" id="mContabilidade" class="busca-lupa" placeholder="Localizar contabilidade por nome..." autocomplete="off" style="width:100%" onfocus="buscarContabilidade()" oninput="buscarContabilidade()"/>
               <div id="contSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="contabilidadeModal()" title="Cadastrar contabilidade">+ Nova</button>
@@ -142,7 +143,7 @@
           <label>Cargo</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
             <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
-              <input type="text" id="mCargo" placeholder="Buscar cargo..." autocomplete="off" style="width:100%" onfocus="buscarCargo()" oninput="buscarCargo()"/>
+              <input type="text" id="mCargo" class="busca-lupa" placeholder="Buscar cargo..." autocomplete="off" style="width:100%" onfocus="buscarCargo()" oninput="buscarCargo()"/>
               <div id="cargoSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novoCargoModal()" title="Cadastrar cargo">+ Novo</button>
@@ -165,7 +166,7 @@
           <label>Médico responsável</label>
           <div class="mrow-wrap" style="gap:.4rem;margin-top:0">
             <div class="mfield-rel" style="flex:1;min-width:140px;margin:0">
-              <input type="text" id="mMedico" placeholder="Clique para escolher ou digite..." autocomplete="off" style="width:100%" onfocus="buscarMedico()" oninput="buscarMedico()"/>
+              <input type="text" id="mMedico" class="busca-lupa" placeholder="Clique para escolher ou digite..." autocomplete="off" style="width:100%" onfocus="buscarMedico()" oninput="buscarMedico()"/>
               <div id="medSugg" class="sugg-list" style="display:none"></div>
             </div>
             <button type="button" class="btn-mini btn-mini-add" onclick="novoMedicoModal()" title="Cadastrar médico">+ Novo</button>
@@ -516,7 +517,8 @@ function listaEmpresasFull() {
   todas.filter(e=>e.tipo!=='contabilidade' && e.nome).forEach(e => {
     map[e.nome.toLowerCase()] = { nome:e.nome, doc:(e.cnpj||e.doc||'') };
   });
-  [...GRO_DB.getEmpresas(), ...GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean)].forEach(n => {
+  const historicas = (typeof GRO_EXAMES !== 'undefined') ? GRO_EXAMES.map(r=>r.empresa).filter(Boolean) : [];
+  [...GRO_DB.getEmpresas(), ...GRO_DB.getAgendamentos().map(a=>a.empresa).filter(Boolean), ...historicas].forEach(n => {
     const k = n.toLowerCase();
     if (!contabils.has(k) && !map[k]) map[k] = { nome:n, doc:'' };
   });
@@ -697,20 +699,25 @@ function excluirAg() {
   fecharModal(); renderAgenda();
 }
 
-// ---------- BASE DE PACIENTES (histórico + cadastrados) ----------
+// ---------- BASE DE PACIENTES (cadastrados + agendamentos + base histórica) ----------
 function listaPacientes() {
-  const map = {};
-  GRO_DB.getAgendamentos().forEach(a => {
-    if (!a.paciente) return;
-    const k = a.paciente + '|' + (a.cpf||'');
-    if (!map[k]) map[k] = { nome:a.paciente, cpf:a.cpf||'' };
-  });
-  JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]').forEach(p => {
-    if (!p || !p.nome) return;
-    const k = p.nome + '|' + (p.cpf||'');
-    if (!map[k]) map[k] = { nome:p.nome, cpf:p.cpf||'' };
-  });
-  return Object.values(map);
+  const out = [];
+  const seen = new Set();   // chave nome|cpf
+  const nomes = new Set();  // nomes já incluídos (em minúsculas)
+  function add(nome, cpf) {
+    nome = (nome||'').trim();
+    if (!nome) return;
+    const key = (nome + '|' + (cpf||'')).toLowerCase();
+    if (seen.has(key)) return;
+    // registros históricos não têm CPF: não duplica se o nome já entrou
+    if (!cpf && nomes.has(nome.toLowerCase())) return;
+    seen.add(key); nomes.add(nome.toLowerCase());
+    out.push({ nome, cpf: cpf||'' });
+  }
+  GRO_DB.getAgendamentos().forEach(a => add(a.paciente, a.cpf));
+  JSON.parse(localStorage.getItem('gro_pacientes_cad')||'[]').forEach(p => p && add(p.nome, p.cpf));
+  if (typeof GRO_EXAMES !== 'undefined') GRO_EXAMES.forEach(r => add(r.paciente, ''));
+  return out;
 }
 
 const btnNovoPacSugg = '<div class="sugg-item" onclick="novoPacienteModal()" style="color:#1a6e3c;font-weight:600">➕ Cadastrar novo paciente</div>';
